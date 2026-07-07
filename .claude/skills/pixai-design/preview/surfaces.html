@@ -1,0 +1,24 @@
+<!doctype html>
+<!-- @dsCard group="Colors" name="Surfaces" subtitle="Gradient, pastel wash, dark, tint" viewport="700x320" --><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 18px 24px; background: var(--bg); display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .tile { aspect-ratio: 1/1; border-radius: var(--radius-md); display: flex; align-items: flex-end; padding: 10px; box-shadow: var(--shadow-sm); position: relative; overflow: hidden; }
+  .label { font-size: 11px; color: #fff; font-family: var(--font-mono); background: rgba(0,0,0,0.25); padding: 3px 8px; border-radius: var(--radius-full); backdrop-filter: blur(6px); }
+  .a { background: var(--pix-gradient); }
+  .b { background: linear-gradient(160deg, #7E22CE, #3B2250); }
+  .c { background: #FBF8FE; }
+  .c .label { background: var(--primary-soft); color: var(--primary); }
+  .d { background: linear-gradient(180deg, #EEE5F6, #B27AE2); }
+  .e { background: #140A1F; }
+  .f { background: linear-gradient(135deg, rgba(149,53,234,0.15), rgba(251,113,136,0.15)); border: 1px solid var(--border-soft); }
+  .f .label { background: rgba(126,34,206,0.15); color: var(--primary); }
+</style></head>
+<body>
+  <div class="tile a"><span class="label">hero gradient</span></div>
+  <div class="tile b"><span class="label">dark violet</span></div>
+  <div class="tile c"><span class="label">off-white #FBF8FE</span></div>
+  <div class="tile d"><span class="label">pastel wash</span></div>
+  <div class="tile e"><span class="label">dark mode bg</span></div>
+  <div class="tile f"><span class="label">soft gradient tint</span></div>
+</body></html>

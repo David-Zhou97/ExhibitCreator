@@ -1,0 +1,19 @@
+<!doctype html>
+<!-- @dsCard group="Colors" name="Signature gradient" subtitle="#9535EA → #EA79F1 → #FB7188" viewport="700x250" --><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 20px 24px; background: var(--bg); }
+  .banner { height: 160px; border-radius: var(--radius-lg); background: var(--pix-gradient); box-shadow: var(--shadow-lg); position: relative; overflow: hidden; }
+  .banner::after { content: ''; position: absolute; inset: 0; background: radial-gradient(120% 80% at 20% 10%, rgba(255,255,255,0.25), transparent 60%); }
+  .stops { display: flex; gap: 18px; margin-top: 14px; font-family: var(--font-mono); font-size: 12px; color: var(--fg-muted); }
+  .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; vertical-align: -2px; margin-right: 6px; }
+</style></head>
+<body>
+  <div class="banner"></div>
+  <div class="stops">
+    <div><span class="dot" style="background:#9535EA"></span>#9535EA</div>
+    <div><span class="dot" style="background:#EA79F1"></span>#EA79F1</div>
+    <div><span class="dot" style="background:#FB7188"></span>#FB7188</div>
+    <div style="margin-left:auto">linear-gradient(135deg, …)</div>
+  </div>
+</body></html>

@@ -1,0 +1,24 @@
+<!doctype html>
+<!-- @dsCard group="Components" name="Badges & status" subtitle="Premium, credits, generating" viewport="700x90" --><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  body { padding: 20px 24px; background: var(--bg); display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .badge { padding: 4px 10px; border-radius: var(--radius-full); font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+  .premium { background: var(--pix-gradient); color: #fff; box-shadow: var(--shadow-glow); }
+  .new { background: var(--pix-pink-accent); color: #fff; }
+  .free { background: var(--primary-soft); color: var(--primary); }
+  .credit { background: var(--pix-800); color: #fff; display: inline-flex; gap: 4px; align-items: center; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--pix-gradient-2); box-shadow: 0 0 6px var(--pix-gradient-2); }
+  .status { padding: 4px 10px; border-radius: var(--radius-full); font-size: 11px; font-weight: 500; display: inline-flex; gap: 6px; align-items: center; background: var(--surface); border: 1px solid var(--border); color: var(--fg); }
+  .status .ok { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+  .status .go { width: 6px; height: 6px; border-radius: 50%; background: var(--pix-purple); animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+</style></head>
+<body>
+  <span class="badge premium">Premium</span>
+  <span class="badge new">New</span>
+  <span class="badge free">Free</span>
+  <span class="badge credit"><span class="dot"></span> 1,240</span>
+  <span class="status"><span class="ok"></span> Ready</span>
+  <span class="status"><span class="go"></span> Generating…</span>
+</body></html>

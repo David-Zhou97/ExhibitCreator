@@ -1,0 +1,171 @@
+/* ==========================================================================
+   PixAI Design System — tokens  (vendored into Exhibit Creator)
+   Source: PixAI Design System handoff bundle (colors_and_type.css)
+   Only change from source: @font-face URLs point at /fonts/ (Vite public dir).
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap');
+
+@font-face {
+  font-family: 'PixAI Rounded';
+  src: url('/fonts/PixAI-Rounded-4.0-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PixAI Rounded';
+  src: url('/fonts/PixAI-Rounded-4.0-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PixAI Rounded';
+  src: url('/fonts/PixAI-Rounded-4.0-Black.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* ---- Brand palette (light) ---- */
+  --pix-purple:            #7E22CE;
+  --pix-purple-lite:       #B27AE2;
+  --pix-purple-super-lite: #EEE5F6;
+  --pix-pink-accent:       #F75C75;
+
+  /* ---- Brand palette (dark counterparts) ---- */
+  --pix-purple-dark:            #8B27AE;
+  --pix-purple-lite-dark:       #B27AE2;
+  --pix-purple-super-lite-dark: #3B2250;
+  --pix-pink-dark:              #FB7188;
+
+  /* ---- Signature gradient ---- */
+  --pix-gradient-1: #9535EA;
+  --pix-gradient-2: #EA79F1;
+  --pix-gradient-3: #FB7188;
+  --pix-gradient:   linear-gradient(135deg, #9535EA 0%, #EA79F1 55%, #FB7188 100%);
+  --pix-gradient-soft: linear-gradient(135deg, rgba(149,53,234,0.15), rgba(234,121,241,0.15) 55%, rgba(251,113,136,0.15));
+
+  /* ---- Cool-white neutrals ---- */
+  --pix-white:   #FFFFFF;
+  --pix-50:      #FBF8FE;
+  --pix-100:     #F5EFFA;
+  --pix-200:     #EBE3F3;
+  --pix-300:     #D9CEE6;
+  --pix-400:     #A799B8;
+  --pix-500:     #786B8A;
+  --pix-600:     #554A66;
+  --pix-700:     #372E45;
+  --pix-800:     #1F1729;
+  --pix-900:     #110A1A;
+
+  /* ---- Semantic status ---- */
+  --success: #22C55E;
+  --warn:    #F59E0B;
+  --danger:  var(--pix-pink-accent);
+  --info:    var(--pix-purple-lite);
+
+  /* ---- Semantic (resolved for light) ---- */
+  --bg:          var(--pix-50);
+  --bg-elevated: var(--pix-white);
+  --surface:     var(--pix-white);
+  --surface-alt: var(--pix-purple-super-lite);
+  --fg:          var(--pix-800);
+  --fg-muted:    var(--pix-500);
+  --fg-subtle:   var(--pix-400);
+  --fg-on-brand: var(--pix-white);
+  --border:      #E7E3EC;
+  --border-soft: rgba(126, 34, 206, 0.12);
+  --primary:     var(--pix-purple);
+  --primary-hover: #6B1AB0;
+  --primary-soft:  var(--pix-purple-super-lite);
+  --accent:      var(--pix-pink-accent);
+
+  /* ---- Shadows (violet-tinted) ---- */
+  --shadow-xs:   0 1px 2px  rgba(126, 34, 206, 0.06);
+  --shadow-sm:   0 2px 8px  rgba(126, 34, 206, 0.08);
+  --shadow-md:   0 8px 24px rgba(126, 34, 206, 0.12);
+  --shadow-lg:   0 20px 48px rgba(126, 34, 206, 0.18);
+  --shadow-glow: 0 0 32px   rgba(234, 121, 241, 0.45);
+
+  /* ---- Radii ---- */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-full: 9999px;
+
+  /* ---- Spacing ---- */
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 20px;
+  --space-7: 24px;
+  --space-8: 32px;
+  --space-9: 48px;
+  --space-10: 64px;
+  --space-11: 96px;
+  --space-12: 128px;
+
+  /* ---- Motion ---- */
+  --ease-out:     cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-bounce:  cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast:     180ms;
+  --dur-base:     260ms;
+  --dur-hero:     500ms;
+
+  /* ---- Typography ---- */
+  --font-display: 'PixAI Rounded', 'Roboto', system-ui, sans-serif;
+  --font-body:    'Roboto', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono:    'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --fs-hero:    64px;
+  --fs-h1:      40px;
+  --fs-h2:      28px;
+  --fs-h3:      22px;
+  --fs-h4:      18px;
+  --fs-body:    16px;
+  --fs-small:   14px;
+  --fs-caption: 12px;
+
+  --lh-tight:  1.15;
+  --lh-snug:   1.3;
+  --lh-normal: 1.5;
+  --lh-loose:  1.65;
+}
+
+[data-theme="dark"] {
+  --bg:          #140A1F;
+  --bg-elevated: #1E1030;
+  --surface:     #1E1030;
+  --surface-alt: var(--pix-purple-super-lite-dark);
+  --fg:          #F5EFFA;
+  --fg-muted:    #A799B8;
+  --fg-subtle:   #786B8A;
+  --border:      #2B1D3C;
+  --border-soft: rgba(178, 122, 226, 0.18);
+  --primary:     var(--pix-purple-dark);
+  --primary-hover: #A03FC7;
+  --primary-soft:  var(--pix-purple-super-lite-dark);
+  --accent:      var(--pix-pink-dark);
+}
+
+/* ---- Gradient text fill (signature) ---- */
+.fill-gradient {
+  background: var(--pix-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* The PixAI wordmark — only use for the logotype itself */
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
