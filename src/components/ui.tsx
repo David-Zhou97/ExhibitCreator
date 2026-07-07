@@ -171,7 +171,7 @@ export function CoverPicker({
   async function onUpload(files: FileList | null) {
     if (!files?.[0]) return;
     try {
-      onChange({ kind: "image", src: await readImageFile(files[0]) });
+      onChange({ kind: "image", src: (await readImageFile(files[0])).src });
     } catch (err) {
       alert((err as Error).message);
     }

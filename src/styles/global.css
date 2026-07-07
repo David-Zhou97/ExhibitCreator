@@ -81,6 +81,7 @@ button { font-family: inherit; }
   font-family: var(--font-body); font-size: 14px; outline: none;
   transition: border-color var(--dur-fast) var(--ease-out);
 }
+.input-sm { padding: 6px 10px; font-size: 12px; border-radius: var(--radius-xs); }
 .input:focus, .textarea:focus { border-color: var(--primary); }
 .textarea { resize: vertical; min-height: 60px; line-height: 1.45; }
 .bare-input {
@@ -309,29 +310,44 @@ button { font-family: inherit; }
   font-family: var(--font-display); font-weight: 500; font-size: 34px;
   letter-spacing: -0.015em; line-height: 1.1; margin: 8px 0 12px;
 }
+.pc-title-tr {
+  font-family: var(--font-display); font-weight: 500; font-size: 19px;
+  color: var(--pix-500); margin: -8px 0 12px; flex: none;
+}
 .pc-rule { height: 3px; width: 56px; background: var(--pix-gradient); border-radius: 2px; margin-bottom: 24px; flex: none; }
 .pc-desc {
-  font-size: 14px; line-height: 1.55; color: var(--pix-500);
-  max-width: 780px; margin: -10px 0 22px; flex: none; white-space: pre-wrap;
+  font-size: 17px; line-height: 1.6; color: var(--pix-500);
+  max-width: 860px; margin: -10px 0 22px; flex: none; white-space: pre-wrap;
 }
-.pc-mosaic { flex: 1; display: grid; gap: 14px; min-height: 0; }
-.pc-cell { position: relative; border-radius: 12px; overflow: hidden; background: var(--pix-100); }
+.pc-desc-tr { color: var(--pix-400); margin-top: -14px; }
+/* Aspect-exact mosaic: rows/cells get fixed px sizes from justifiedLayout(),
+   leftover space becomes centered margins instead of cropping the images. */
+.pc-mosaic {
+  flex: 1; display: flex; flex-direction: column; gap: 14px; min-height: 0;
+  align-items: center; justify-content: center;
+}
+.pc-row { display: flex; gap: 14px; flex: none; }
+.pc-cell { position: relative; border-radius: 12px; overflow: hidden; background: var(--pix-100); flex: none; }
 /* Exported page images render as background-image (crops correctly in
    html2canvas, unlike object-fit) — keep preview and PDF identical. */
 .bg-cover-img { width: 100%; height: 100%; background-size: cover; background-position: center; background-repeat: no-repeat; }
+/* Solid background + fixed height/line-height (no padding, no backdrop-filter):
+   html2canvas renders this box/text placement faithfully in the PDF. */
 .pc-plate {
-  position: absolute; top: 10px; left: 10px;
-  background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(8px);
-  color: var(--pix-700); font-family: var(--font-mono); font-size: 11px;
-  font-weight: 500; padding: 3px 9px; border-radius: var(--radius-full);
-  letter-spacing: 0.06em;
+  position: absolute; top: 12px; left: 12px; display: block;
+  height: 26px; line-height: 26px; padding: 0 11px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--pix-700); font-family: var(--font-mono); font-size: 12px;
+  font-weight: 500; border-radius: 13px; letter-spacing: 0.05em;
+  max-width: 75%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .pc-captions {
   margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--pix-200);
   display: flex; flex-wrap: wrap; gap: 6px 28px; flex: none;
 }
-.pc-caption { display: flex; gap: 8px; font-size: 12px; line-height: 1.45; color: var(--pix-500); max-width: 310px; }
-.pc-caption b { font-family: var(--font-mono); color: var(--primary); font-weight: 500; font-size: 11px; padding-top: 1px; }
+.pc-caption { display: flex; gap: 8px; font-size: 13px; line-height: 1.45; color: var(--pix-500); max-width: 330px; }
+.pc-caption b { font-family: var(--font-mono); color: var(--primary); font-weight: 500; font-size: 12px; padding-top: 1px; white-space: nowrap; }
+.pc-caption-tr { display: block; color: var(--pix-400); }
 .pc-empty {
   flex: 1; border: 2px dashed var(--pix-200); border-radius: var(--radius-md);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -368,7 +384,12 @@ button { font-family: inherit; }
   font-family: var(--font-display); font-weight: 900; font-size: 58px;
   letter-spacing: -0.02em; line-height: 1.05; margin: 16px 0 8px;
 }
+.pc-cover-title-tr {
+  font-family: var(--font-display); font-weight: 500; font-size: 26px;
+  opacity: 0.9; margin: -4px 0 8px;
+}
 .pc-cover-sub { font-size: 18px; font-weight: 300; line-height: 1.45; opacity: 0.92; max-width: 620px; }
+.pc-cover-sub-tr { opacity: 0.72; margin-top: 2px; }
 .pc-cover-foot {
   margin-top: 24px; display: flex; align-items: center; gap: 10px;
   font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.85;

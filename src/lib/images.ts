@@ -1,10 +1,16 @@
 /** Read an image file into a data URL, resizing large images down so
  *  exhibits stay storable and PDFs stay reasonably sized. */
 
-const MAX_DIM = 1800;
-const KEEP_ORIGINAL_BELOW = 600_000; // bytes
+const MAX_DIM = 2400; // ≈ what a full-width cell needs at the PDF's 3× render scale
+const KEEP_ORIGINAL_BELOW = 900_000; // bytes
 
-export function readImageFile(file: File): Promise<string> {
+export interface ImportedImage {
+  src: string;
+  width: number;
+  height: number;
+}
+
+export function readImageFile(file: File): Promise<ImportedImage> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
@@ -14,7 +20,12 @@ export function readImageFile(file: File): Promise<string> {
 
       if (scale === 1 && file.size < KEEP_ORIGINAL_BELOW) {
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
+        reader.onload = () =>
+          resolve({
+            src: reader.result as string,
+            width: img.naturalWidth,
+            height: img.naturalHeight,
+          });
         reader.onerror = () => reject(reader.error);
         reader.readAsDataURL(file);
         return;
@@ -26,8 +37,13 @@ export function readImageFile(file: File): Promise<string> {
       const ctx = canvas.getContext("2d")!;
       ctx.fillStyle = "#ffffff"; // flatten transparency before JPEG
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.imageSmoothingQuality = "high";
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL("image/jpeg", 0.88));
+      resolve({
+        src: canvas.toDataURL("image/jpeg", 0.9),
+        width: canvas.width,
+        height: canvas.height,
+      });
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
@@ -36,3 +52,12 @@ export function readImageFile(file: File): Promise<string> {
     img.src = url;
   });
 }
+
+/** Decode a stored data URL just to learn its natural size (migration). */
+export const measureImage = (src: string) =>
+  new Promise<{ width: number; height: number }>((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = () => resolve({ width: 1, height: 1 });
+    img.src = src;
+  });

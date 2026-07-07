@@ -6,7 +6,15 @@ export interface ExhibitImage {
   id: string;
   /** Data URL (uploads are resized/compressed on import). */
   src: string;
+  /** Natural pixel size — drives the orientation-aware page layout. */
+  width: number;
+  height: number;
+  /** Plate label shown on the image badge; empty = plate number ("01"). */
+  label: string;
   description: string;
+  /** Translations into the exhibit's output language (filled at export time). */
+  labelTr?: string;
+  descriptionTr?: string;
 }
 
 export interface ExhibitPage {
@@ -15,6 +23,8 @@ export interface ExhibitPage {
   /** Optional intro paragraph describing the gallery, shown under the title. */
   description: string;
   images: ExhibitImage[];
+  titleTr?: string;
+  descriptionTr?: string;
 }
 
 export type Cover =
@@ -31,6 +41,8 @@ export interface Exhibit {
   pages: ExhibitPage[];
   createdAt: number;
   updatedAt: number;
+  titleTr?: string;
+  subtitleTr?: string;
 }
 
 export const uid = () =>

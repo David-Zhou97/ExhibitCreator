@@ -2,6 +2,7 @@
  *  ~5MB quota is not enough. One object store keyed by exhibit id. */
 
 import type { Exhibit } from "./types";
+import { measureImage } from "./images";
 
 const DB_NAME = "exhibit-creator";
 const STORE = "exhibits";
@@ -39,15 +40,32 @@ function withStore<T>(
   );
 }
 
-/** Fill in fields added after an exhibit was stored (e.g. page descriptions). */
-const migrate = (e: Exhibit): Exhibit => ({
-  ...e,
-  pages: e.pages.map((p) => ({ ...p, description: p.description ?? "" })),
-});
+/** Fill in fields added after an exhibit was stored: page descriptions,
+ *  image labels, and image dimensions (decoded once for old records). */
+async function migrate(e: Exhibit): Promise<Exhibit> {
+  return {
+    ...e,
+    pages: await Promise.all(
+      e.pages.map(async (p) => ({
+        ...p,
+        description: p.description ?? "",
+        images: await Promise.all(
+          p.images.map(async (im) => ({
+            ...im,
+            label: im.label ?? "",
+            ...(im.width > 0 && im.height > 0
+              ? { width: im.width, height: im.height }
+              : await measureImage(im.src)),
+          })),
+        ),
+      })),
+    ),
+  };
+}
 
 export const loadExhibits = (): Promise<Exhibit[]> =>
   withStore("readonly", (s) => s.getAll() as IDBRequest<Exhibit[]>).then((list) =>
-    list.map(migrate),
+    Promise.all(list.map(migrate)),
   );
 
 export const saveExhibit = (e: Exhibit): Promise<void> =>

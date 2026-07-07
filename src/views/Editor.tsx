@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowLeft, Check, ChevronDown, ChevronUp, FileDown, ImagePlus,
-  Loader2, Plus, Trash2, X,
+  Languages, Loader2, Plus, Trash2, X,
 } from "lucide-react";
 import {
   arrayMove, newPage, uid,
@@ -10,10 +10,16 @@ import {
 import { readImageFile } from "../lib/images";
 import { MAX_IMAGES_PER_PAGE, plateNo } from "../lib/layout";
 import { exportBookPdf, pdfFilename } from "../lib/pdf";
+import { loadApiKey, saveApiKey, stripTranslations, translateExhibit } from "../lib/translate";
+import { langOf } from "../lib/lang";
 import { CoverCanvas, PAGE_H, PAGE_W, PageCanvas, Scaled } from "../components/PageCanvas";
-import { Button, cls, CoverPicker, Field, IconBtn, LangBadge, LangChips, Wordmark } from "../components/ui";
+import { Button, cls, CoverPicker, Field, IconBtn, LangBadge, LangChips, Modal, Wordmark } from "../components/ui";
 
 type Selection = "cover" | string; // page id
+
+type ExportState =
+  | { phase: "translate" }
+  | { phase: "render"; exhibit: Exhibit; done: number; total: number };
 
 export function Editor({
   exhibit,
@@ -25,7 +31,8 @@ export function Editor({
   onBack: () => void;
 }) {
   const [sel, setSel] = useState<Selection>("cover");
-  const [exporting, setExporting] = useState<{ done: number; total: number } | null>(null);
+  const [showExport, setShowExport] = useState(false);
+  const [exporting, setExporting] = useState<ExportState | null>(null);
   const exportRef = useRef<HTMLDivElement>(null);
   const exportStarted = useRef(false);
 
@@ -62,8 +69,13 @@ export function Editor({
       alert(`Pages hold up to ${MAX_IMAGES_PER_PAGE} images — adding the first ${room}.`);
     }
     try {
-      const srcs = await Promise.all(list.slice(0, Math.max(room, 0)).map(readImageFile));
-      const images: ExhibitImage[] = srcs.map((src) => ({ id: uid(), src, description: "" }));
+      const imported = await Promise.all(list.slice(0, Math.max(room, 0)).map(readImageFile));
+      const images: ExhibitImage[] = imported.map((imp) => ({
+        id: uid(),
+        ...imp,
+        label: "",
+        description: "",
+      }));
       patchPage(page.id, { images: [...page.images, ...images] });
     } catch (err) {
       alert((err as Error).message);
@@ -74,13 +86,32 @@ export function Editor({
     patchPage(page.id, { images: page.images.map((im) => (im.id === imgId ? { ...im, ...p } : im)) });
 
   /* ---- PDF export ---- */
+  async function startExport(translate: boolean, apiKey: string) {
+    setShowExport(false);
+    const total = exhibit.pages.length + 1;
+    if (!translate) {
+      setExporting({ phase: "render", exhibit: stripTranslations(exhibit), done: 0, total });
+      return;
+    }
+    setExporting({ phase: "translate" });
+    try {
+      const translated = await translateExhibit(exhibit, apiKey);
+      onChange(translated); // keep translations in the saved exhibit + preview
+      setExporting({ phase: "render", exhibit: translated, done: 0, total });
+    } catch (err) {
+      console.error(err);
+      alert(`Translation failed: ${(err as Error).message}`);
+      setExporting(null);
+    }
+  }
+
   useEffect(() => {
-    if (!exporting || exportStarted.current || !exportRef.current) return;
+    if (exporting?.phase !== "render" || exportStarted.current || !exportRef.current) return;
     exportStarted.current = true;
     (async () => {
       try {
         await exportBookPdf(exportRef.current!, pdfFilename(exhibit.title), (done, total) =>
-          setExporting({ done, total }),
+          setExporting((s) => (s?.phase === "render" ? { ...s, done, total } : s)),
         );
       } catch (err) {
         console.error(err);
@@ -103,7 +134,7 @@ export function Editor({
           style={{ flex: 1, maxWidth: 420 }}
           value={exhibit.title}
           placeholder="Untitled exhibit"
-          onChange={(e) => patch({ title: e.target.value })}
+          onChange={(e) => patch({ title: e.target.value, titleTr: undefined })}
         />
         <div style={{ flex: 1 }} />
         <LangBadge input={exhibit.inputLang} output={exhibit.outputLang} />
@@ -115,13 +146,13 @@ export function Editor({
           size="sm"
           icon={exporting ? Loader2 : FileDown}
           disabled={!!exporting}
-          onClick={() => setExporting({ done: 0, total: exhibit.pages.length + 1 })}
+          onClick={() => setShowExport(true)}
         >
-          {exporting ? (
-            <>Rendering {exporting.done}/{exporting.total}…</>
-          ) : (
-            "Export PDF"
-          )}
+          {!exporting
+            ? "Export PDF"
+            : exporting.phase === "translate"
+              ? "Translating…"
+              : `Rendering ${exporting.done}/${exporting.total}…`}
         </Button>
       </header>
 
@@ -190,20 +221,91 @@ export function Editor({
         </aside>
       </div>
 
+      {showExport && (
+        <ExportModal exhibit={exhibit} onClose={() => setShowExport(false)} onExport={startExport} />
+      )}
+
       {/* Offscreen full-size book render for PDF capture */}
-      {exporting && (
+      {exporting?.phase === "render" && (
         <div ref={exportRef} aria-hidden style={{ position: "absolute", top: 0, left: -2 * PAGE_W, width: PAGE_W }}>
           <div data-book-page>
-            <CoverCanvas exhibit={exhibit} />
+            <CoverCanvas exhibit={exporting.exhibit} />
           </div>
-          {exhibit.pages.map((page, i) => (
+          {exporting.exhibit.pages.map((page, i) => (
             <div data-book-page key={page.id}>
-              <PageCanvas exhibit={exhibit} page={page} pageNo={i + 1} pageCount={exhibit.pages.length + 1} />
+              <PageCanvas exhibit={exporting.exhibit} page={page} pageNo={i + 1} pageCount={exporting.exhibit.pages.length + 1} />
             </div>
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+/* ---- Export modal ---- */
+
+function ExportModal({
+  exhibit,
+  onClose,
+  onExport,
+}: {
+  exhibit: Exhibit;
+  onClose: () => void;
+  onExport: (translate: boolean, apiKey: string) => void;
+}) {
+  const [apiKey, setApiKey] = useState(loadApiKey);
+  const output = langOf(exhibit.outputLang);
+  const sameLang = exhibit.inputLang === exhibit.outputLang;
+
+  function exportTranslated() {
+    saveApiKey(apiKey);
+    onExport(true, apiKey.trim());
+  }
+
+  return (
+    <Modal title="Export PDF" onClose={onClose}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        {sameLang ? (
+          <div className="inspector-note">
+            Input and output language are both {output.native}, so there is nothing to
+            translate — the book exports as written.
+          </div>
+        ) : (
+          <>
+            <div className="inspector-note">
+              Claude can translate the book's text — titles, gallery descriptions, plate
+              labels and captions — into <b>{output.native}</b> before export. Translations
+              appear beneath the original text and are regenerated on each export.
+            </div>
+            <Field label="Anthropic API key">
+              <input
+                className="input"
+                type="password"
+                placeholder="sk-ant-…"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+              />
+            </Field>
+            <div className="inspector-note">
+              The key is stored only in this browser and sent only to the Anthropic API.
+            </div>
+          </>
+        )}
+      </div>
+      <div className="modal-foot">
+        <Button variant="dim" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button variant={sameLang ? "generate" : "soft"} icon={FileDown} onClick={() => onExport(false, "")}>
+          {sameLang ? "Export PDF" : "Export original only"}
+        </Button>
+        {!sameLang && (
+          <Button variant="generate" icon={Languages} disabled={!apiKey.trim()} onClick={exportTranslated}>
+            Translate & export
+          </Button>
+        )}
+      </div>
+    </Modal>
   );
 }
 
@@ -247,11 +349,11 @@ function CoverInspector({
       <div className="inspector-title">Cover</div>
       <Field label="Title">
         <input className="input" value={exhibit.title} placeholder="Untitled exhibit"
-          onChange={(e) => patch({ title: e.target.value })} />
+          onChange={(e) => patch({ title: e.target.value, titleTr: undefined })} />
       </Field>
       <Field label="Subtitle">
         <input className="input" value={exhibit.subtitle} placeholder="A short line for the cover"
-          onChange={(e) => patch({ subtitle: e.target.value })} />
+          onChange={(e) => patch({ subtitle: e.target.value, subtitleTr: undefined })} />
       </Field>
       <Field label="Input language">
         <LangChips value={exhibit.inputLang} onChange={(l) => patch({ inputLang: l })} />
@@ -290,7 +392,7 @@ function PageInspector({
       <div className="inspector-title">Page {plateNo(index)}</div>
       <Field label="Page title">
         <input className="input" value={page.title} placeholder="Untitled page"
-          onChange={(e) => patchPage(page.id, { title: e.target.value })} />
+          onChange={(e) => patchPage(page.id, { title: e.target.value, titleTr: undefined })} />
       </Field>
 
       <Field label="Description (optional)">
@@ -299,7 +401,7 @@ function PageInspector({
           rows={3}
           placeholder="Introduce this gallery — what do these results show?"
           value={page.description}
-          onChange={(e) => patchPage(page.id, { description: e.target.value })}
+          onChange={(e) => patchPage(page.id, { description: e.target.value, descriptionTr: undefined })}
         />
       </Field>
 
@@ -311,13 +413,19 @@ function PageInspector({
                 <img className="img-row-thumb" src={im.src} alt="" />
                 <span className="img-row-no">{plateNo(i)}</span>
               </div>
-              <div className="img-row-main">
+              <div className="img-row-main" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <input
+                  className="input input-sm"
+                  placeholder={`Label (default ${plateNo(i)})`}
+                  value={im.label}
+                  onChange={(e) => patchImage(page, im.id, { label: e.target.value, labelTr: undefined })}
+                />
                 <textarea
                   className="textarea"
                   rows={2}
                   placeholder="Describe this image…"
                   value={im.description}
-                  onChange={(e) => patchImage(page, im.id, { description: e.target.value })}
+                  onChange={(e) => patchImage(page, im.id, { description: e.target.value, descriptionTr: undefined })}
                 />
               </div>
               <div className="img-row-tools">
@@ -348,9 +456,10 @@ function PageInspector({
         </div>
       </Field>
       <div className="inspector-note">
-        Images arrange themselves automatically to fill the page — the layout adapts to how many
-        you add (up to {MAX_IMAGES_PER_PAGE}), cropping each to fit. Descriptions appear as
-        numbered captions along the bottom of the page.
+        Frames follow each image's orientation — wide images get wide frames, tall images
+        tall ones — and fill the page automatically (up to {MAX_IMAGES_PER_PAGE}). Labels
+        replace the plate numbers on the page; descriptions appear as captions along the
+        bottom.
       </div>
     </>
   );

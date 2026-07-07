@@ -22,7 +22,9 @@ export async function exportBookPdf(
 
   for (let i = 0; i < pages.length; i++) {
     const canvas = await html2canvas(pages[i], {
-      scale: 2,
+      // 3× ≈ 290 DPI on A4 and roughly matches the import resolution cap,
+      // so images are re-sampled as little as possible.
+      scale: 3,
       useCORS: true,
       backgroundColor: "#ffffff",
       logging: false,
