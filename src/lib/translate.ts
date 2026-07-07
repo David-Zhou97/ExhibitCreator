@@ -6,7 +6,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { Exhibit } from "./types";
 import { langOf } from "./lang";
 
-const MODEL = "claude-opus-4-8";
+const MODEL = "claude-sonnet-5";
 const KEY_STORAGE = "exhibit-creator:anthropic-key";
 
 export const loadApiKey = () => localStorage.getItem(KEY_STORAGE) ?? "";
@@ -113,17 +113,15 @@ export async function translateExhibit(exhibit: Exhibit, apiKey: string): Promis
   };
 }
 
-/** Exhibit with all translations removed (for "export original only"). */
-export function stripTranslations(exhibit: Exhibit): Exhibit {
-  return {
-    ...exhibit,
-    titleTr: undefined,
-    subtitleTr: undefined,
-    pages: exhibit.pages.map((p) => ({
-      ...p,
-      titleTr: undefined,
-      descriptionTr: undefined,
-      images: p.images.map((im) => ({ ...im, labelTr: undefined, descriptionTr: undefined })),
-    })),
-  };
-}
+export const hasTranslations = (e: Exhibit): boolean =>
+  Boolean(
+    e.titleTr ||
+      e.subtitleTr ||
+      e.pages.some(
+        (p) =>
+          p.titleTr ||
+          p.descriptionTr ||
+          p.images.some((im) => im.labelTr || im.descriptionTr),
+      ),
+  );
+

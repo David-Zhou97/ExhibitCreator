@@ -11,7 +11,13 @@ export const PAGE_H = 794;
 
 const CELL_GAP = 14;
 
-const plateLabel = (im: ExhibitImage, i: number) => im.label.trim() || plateNo(i);
+/** Pick the translated text when viewing the translated book, falling back
+ *  to the original for fields that have no translation (yet). */
+const pick = (original: string, tr: string | undefined, translated: boolean) =>
+  translated && tr?.trim() ? tr : original;
+
+const plateLabel = (im: ExhibitImage, i: number, translated: boolean) =>
+  pick(im.label, im.labelTr, translated).trim() || plateNo(i);
 
 /* ---- Content page ---------------------------------------------------------- */
 
@@ -21,6 +27,7 @@ export function PageCanvas({
   pageNo,
   pageCount,
   editing = false,
+  translated = false,
 }: {
   exhibit: Exhibit;
   page: ExhibitPage;
@@ -29,6 +36,8 @@ export function PageCanvas({
   pageCount: number;
   /** Show the "add images" placeholder for empty pages (preview only). */
   editing?: boolean;
+  /** Show the output-language version of all text. */
+  translated?: boolean;
 }) {
   const captions = page.images.filter((im) => im.description.trim());
   const showPlates = page.images.length > 1 || captions.length > 0;
@@ -53,17 +62,21 @@ export function PageCanvas({
   return (
     <div className="pc">
       <div className="pc-head">
-        <span className="pc-overline">{exhibit.title.trim() || "Untitled exhibit"}</span>
+        <span className="pc-overline">
+          {pick(exhibit.title, exhibit.titleTr, translated).trim() || "Untitled exhibit"}
+        </span>
         <span className="pc-pageno">
           {langOf(exhibit.inputLang).short} → {langOf(exhibit.outputLang).short} ·{" "}
           {plateNo(pageNo - 1)} / {plateNo(pageCount - 1)}
         </span>
       </div>
-      <div className="pc-title">{page.title.trim() || "Untitled page"}</div>
-      {page.titleTr?.trim() && <div className="pc-title-tr">{page.titleTr}</div>}
+      <div className="pc-title">
+        {pick(page.title, page.titleTr, translated).trim() || "Untitled page"}
+      </div>
       <div className="pc-rule" />
-      {page.description.trim() && <p className="pc-desc">{page.description}</p>}
-      {page.descriptionTr?.trim() && <p className="pc-desc pc-desc-tr">{page.descriptionTr}</p>}
+      {page.description.trim() && (
+        <p className="pc-desc">{pick(page.description, page.descriptionTr, translated)}</p>
+      )}
 
       {page.images.length > 0 ? (
         <div className="pc-mosaic" ref={mosaicRef}>
@@ -87,12 +100,7 @@ export function PageCanvas({
                       aria-label={im.description || `Image ${i + 1}`}
                       style={{ backgroundImage: `url("${im.src}")` }}
                     />
-                    {showPlates && (
-                      <span className="pc-plate">
-                        {plateLabel(im, i)}
-                        {im.labelTr?.trim() ? ` · ${im.labelTr}` : ""}
-                      </span>
-                    )}
+                    {showPlates && <span className="pc-plate">{plateLabel(im, i, translated)}</span>}
                   </figure>
                 );
               })}
@@ -113,13 +121,8 @@ export function PageCanvas({
           {page.images.map((im, i) =>
             im.description.trim() ? (
               <div key={im.id} className="pc-caption">
-                <b>{plateLabel(im, i)}</b>
-                <span>
-                  {im.description}
-                  {im.descriptionTr?.trim() && (
-                    <span className="pc-caption-tr">{im.descriptionTr}</span>
-                  )}
-                </span>
+                <b>{plateLabel(im, i, translated)}</b>
+                <span>{pick(im.description, im.descriptionTr, translated)}</span>
               </div>
             ) : null,
           )}
@@ -131,7 +134,13 @@ export function PageCanvas({
 
 /* ---- Cover page --------------------------------------------------------------- */
 
-export function CoverCanvas({ exhibit }: { exhibit: Exhibit }) {
+export function CoverCanvas({
+  exhibit,
+  translated = false,
+}: {
+  exhibit: Exhibit;
+  translated?: boolean;
+}) {
   const { cover } = exhibit;
   const gradient = cover.kind === "gradient";
   return (
@@ -154,11 +163,13 @@ export function CoverCanvas({ exhibit }: { exhibit: Exhibit }) {
           <span style={{ opacity: 0.75 }}>→</span>
           {langOf(exhibit.outputLang).native}
         </span>
-        <div className="pc-cover-title">{exhibit.title.trim() || "Untitled exhibit"}</div>
-        {exhibit.titleTr?.trim() && <div className="pc-cover-title-tr">{exhibit.titleTr}</div>}
-        {exhibit.subtitle.trim() && <div className="pc-cover-sub">{exhibit.subtitle}</div>}
-        {exhibit.subtitleTr?.trim() && (
-          <div className="pc-cover-sub pc-cover-sub-tr">{exhibit.subtitleTr}</div>
+        <div className="pc-cover-title">
+          {pick(exhibit.title, exhibit.titleTr, translated).trim() || "Untitled exhibit"}
+        </div>
+        {exhibit.subtitle.trim() && (
+          <div className="pc-cover-sub">
+            {pick(exhibit.subtitle, exhibit.subtitleTr, translated)}
+          </div>
         )}
         <div className="pc-cover-foot">
           <img src="/brand/pixai-logo-mark.svg" alt="" />

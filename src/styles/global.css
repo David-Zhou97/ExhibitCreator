@@ -133,6 +133,18 @@ button { font-family: inherit; }
   color: var(--primary); background: var(--primary-soft);
   border-radius: var(--radius-full); padding: 4px 12px; white-space: nowrap;
 }
+/* Original ↔ translated view switch (appears once a book has translations) */
+.lang-toggle {
+  display: inline-flex; gap: 2px; padding: 3px;
+  background: var(--pix-100); border-radius: var(--radius-full);
+}
+.lang-toggle-opt {
+  border: 0; cursor: pointer; background: transparent; color: var(--fg-muted);
+  font-family: inherit; font-size: 12px; font-weight: 600; padding: 4px 12px;
+  border-radius: var(--radius-full); white-space: nowrap;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+.lang-toggle-opt.active { background: #fff; color: var(--primary); box-shadow: var(--shadow-xs); }
 .save-hint { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--fg-subtle); }
 
 /* ---- Home ------------------------------------------------------------------ */
@@ -310,16 +322,11 @@ button { font-family: inherit; }
   font-family: var(--font-display); font-weight: 500; font-size: 34px;
   letter-spacing: -0.015em; line-height: 1.1; margin: 8px 0 12px;
 }
-.pc-title-tr {
-  font-family: var(--font-display); font-weight: 500; font-size: 19px;
-  color: var(--pix-500); margin: -8px 0 12px; flex: none;
-}
 .pc-rule { height: 3px; width: 56px; background: var(--pix-gradient); border-radius: 2px; margin-bottom: 24px; flex: none; }
 .pc-desc {
   font-size: 17px; line-height: 1.6; color: var(--pix-500);
   max-width: 860px; margin: -10px 0 22px; flex: none; white-space: pre-wrap;
 }
-.pc-desc-tr { color: var(--pix-400); margin-top: -14px; }
 /* Aspect-exact mosaic: rows/cells get fixed px sizes from justifiedLayout(),
    leftover space becomes centered margins instead of cropping the images. */
 .pc-mosaic {
@@ -347,7 +354,6 @@ button { font-family: inherit; }
 }
 .pc-caption { display: flex; gap: 8px; font-size: 13px; line-height: 1.45; color: var(--pix-500); max-width: 330px; }
 .pc-caption b { font-family: var(--font-mono); color: var(--primary); font-weight: 500; font-size: 12px; padding-top: 1px; white-space: nowrap; }
-.pc-caption-tr { display: block; color: var(--pix-400); }
 .pc-empty {
   flex: 1; border: 2px dashed var(--pix-200); border-radius: var(--radius-md);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -384,12 +390,7 @@ button { font-family: inherit; }
   font-family: var(--font-display); font-weight: 900; font-size: 58px;
   letter-spacing: -0.02em; line-height: 1.05; margin: 16px 0 8px;
 }
-.pc-cover-title-tr {
-  font-family: var(--font-display); font-weight: 500; font-size: 26px;
-  opacity: 0.9; margin: -4px 0 8px;
-}
 .pc-cover-sub { font-size: 18px; font-weight: 300; line-height: 1.45; opacity: 0.92; max-width: 620px; }
-.pc-cover-sub-tr { opacity: 0.72; margin-top: 2px; }
 .pc-cover-foot {
   margin-top: 24px; display: flex; align-items: center; gap: 10px;
   font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; opacity: 0.85;

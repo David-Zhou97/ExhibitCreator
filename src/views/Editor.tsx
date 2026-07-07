@@ -10,7 +10,7 @@ import {
 import { readImageFile } from "../lib/images";
 import { MAX_IMAGES_PER_PAGE, plateNo } from "../lib/layout";
 import { exportBookPdf, pdfFilename } from "../lib/pdf";
-import { loadApiKey, saveApiKey, stripTranslations, translateExhibit } from "../lib/translate";
+import { hasTranslations, loadApiKey, saveApiKey, translateExhibit } from "../lib/translate";
 import { langOf } from "../lib/lang";
 import { CoverCanvas, PAGE_H, PAGE_W, PageCanvas, Scaled } from "../components/PageCanvas";
 import { Button, cls, CoverPicker, Field, IconBtn, LangBadge, LangChips, Modal, Wordmark } from "../components/ui";
@@ -19,7 +19,7 @@ type Selection = "cover" | string; // page id
 
 type ExportState =
   | { phase: "translate" }
-  | { phase: "render"; exhibit: Exhibit; done: number; total: number };
+  | { phase: "render"; exhibit: Exhibit; translated: boolean; done: number; total: number };
 
 export function Editor({
   exhibit,
@@ -33,8 +33,13 @@ export function Editor({
   const [sel, setSel] = useState<Selection>("cover");
   const [showExport, setShowExport] = useState(false);
   const [exporting, setExporting] = useState<ExportState | null>(null);
+  /** Which language version of the book is shown in the editor. */
+  const [viewTr, setViewTr] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
   const exportStarted = useRef(false);
+
+  const translatable = hasTranslations(exhibit);
+  const translated = viewTr && translatable;
 
   const selPageIndex = exhibit.pages.findIndex((p) => p.id === sel);
   const selPage = selPageIndex >= 0 ? exhibit.pages[selPageIndex] : null;
@@ -90,14 +95,15 @@ export function Editor({
     setShowExport(false);
     const total = exhibit.pages.length + 1;
     if (!translate) {
-      setExporting({ phase: "render", exhibit: stripTranslations(exhibit), done: 0, total });
+      setExporting({ phase: "render", exhibit, translated: false, done: 0, total });
       return;
     }
     setExporting({ phase: "translate" });
     try {
-      const translated = await translateExhibit(exhibit, apiKey);
-      onChange(translated); // keep translations in the saved exhibit + preview
-      setExporting({ phase: "render", exhibit: translated, done: 0, total });
+      const next = await translateExhibit(exhibit, apiKey);
+      onChange(next); // keep translations in the saved exhibit
+      setViewTr(true); // switch the editor to the translated view
+      setExporting({ phase: "render", exhibit: next, translated: true, done: 0, total });
     } catch (err) {
       console.error(err);
       alert(`Translation failed: ${(err as Error).message}`);
@@ -137,6 +143,24 @@ export function Editor({
           onChange={(e) => patch({ title: e.target.value, titleTr: undefined })}
         />
         <div style={{ flex: 1 }} />
+        {translatable && (
+          <div className="lang-toggle" role="group" aria-label="Book language">
+            <button
+              type="button"
+              className={cls("lang-toggle-opt", !viewTr && "active")}
+              onClick={() => setViewTr(false)}
+            >
+              {langOf(exhibit.inputLang).native}
+            </button>
+            <button
+              type="button"
+              className={cls("lang-toggle-opt", viewTr && "active")}
+              onClick={() => setViewTr(true)}
+            >
+              {langOf(exhibit.outputLang).native}
+            </button>
+          </div>
+        )}
         <LangBadge input={exhibit.inputLang} output={exhibit.outputLang} />
         <span className="save-hint">
           <Check size={12} strokeWidth={2.5} /> Saved locally
@@ -163,7 +187,7 @@ export function Editor({
           <div className="thumb-wrap">
             <button type="button" className={cls("thumb", sel === "cover" && "sel")} onClick={() => setSel("cover")}>
               <Scaled width={160}>
-                <CoverCanvas exhibit={exhibit} />
+                <CoverCanvas exhibit={exhibit} translated={translated} />
               </Scaled>
             </button>
             <div className="thumb-label">Cover</div>
@@ -172,7 +196,7 @@ export function Editor({
             <div className="thumb-wrap" key={page.id}>
               <button type="button" className={cls("thumb", sel === page.id && "sel")} onClick={() => setSel(page.id)}>
                 <Scaled width={160}>
-                  <PageCanvas exhibit={exhibit} page={page} pageNo={i + 1} pageCount={exhibit.pages.length + 1} editing />
+                  <PageCanvas exhibit={exhibit} page={page} pageNo={i + 1} pageCount={exhibit.pages.length + 1} editing translated={translated} />
                 </Scaled>
               </button>
               <div className="thumb-tools">
@@ -193,7 +217,7 @@ export function Editor({
         {/* ---- Stage ---- */}
         <FitStage>
           {sel === "cover" || !selPage ? (
-            <CoverCanvas exhibit={exhibit} />
+            <CoverCanvas exhibit={exhibit} translated={translated} />
           ) : (
             <PageCanvas
               exhibit={exhibit}
@@ -201,6 +225,7 @@ export function Editor({
               pageNo={selPageIndex + 1}
               pageCount={exhibit.pages.length + 1}
               editing
+              translated={translated}
             />
           )}
         </FitStage>
@@ -229,11 +254,17 @@ export function Editor({
       {exporting?.phase === "render" && (
         <div ref={exportRef} aria-hidden style={{ position: "absolute", top: 0, left: -2 * PAGE_W, width: PAGE_W }}>
           <div data-book-page>
-            <CoverCanvas exhibit={exporting.exhibit} />
+            <CoverCanvas exhibit={exporting.exhibit} translated={exporting.translated} />
           </div>
           {exporting.exhibit.pages.map((page, i) => (
             <div data-book-page key={page.id}>
-              <PageCanvas exhibit={exporting.exhibit} page={page} pageNo={i + 1} pageCount={exporting.exhibit.pages.length + 1} />
+              <PageCanvas
+                exhibit={exporting.exhibit}
+                page={page}
+                pageNo={i + 1}
+                pageCount={exporting.exhibit.pages.length + 1}
+                translated={exporting.translated}
+              />
             </div>
           ))}
         </div>
@@ -274,8 +305,10 @@ function ExportModal({
           <>
             <div className="inspector-note">
               Claude can translate the book's text — titles, gallery descriptions, plate
-              labels and captions — into <b>{output.native}</b> before export. Translations
-              appear beneath the original text and are regenerated on each export.
+              labels and captions — into <b>{output.native}</b> and export the translated
+              book. Afterwards you can flip between the original and translated views with
+              the language toggle in the top bar. Translations are regenerated on each
+              translated export.
             </div>
             <Field label="Anthropic API key">
               <input
@@ -297,7 +330,7 @@ function ExportModal({
           Cancel
         </Button>
         <Button variant={sameLang ? "generate" : "soft"} icon={FileDown} onClick={() => onExport(false, "")}>
-          {sameLang ? "Export PDF" : "Export original only"}
+          {sameLang ? "Export PDF" : "Export original"}
         </Button>
         {!sameLang && (
           <Button variant="generate" icon={Languages} disabled={!apiKey.trim()} onClick={exportTranslated}>
