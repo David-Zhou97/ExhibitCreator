@@ -12,6 +12,8 @@ export interface ExhibitImage {
 export interface ExhibitPage {
   id: string;
   title: string;
+  /** Optional intro paragraph describing the gallery, shown under the title. */
+  description: string;
   images: ExhibitImage[];
 }
 
@@ -37,6 +39,7 @@ export const uid = () =>
 export const newPage = (n: number): ExhibitPage => ({
   id: uid(),
   title: `Untitled page ${n}`,
+  description: "",
   images: [],
 });
 

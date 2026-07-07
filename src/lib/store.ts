@@ -39,8 +39,16 @@ function withStore<T>(
   );
 }
 
+/** Fill in fields added after an exhibit was stored (e.g. page descriptions). */
+const migrate = (e: Exhibit): Exhibit => ({
+  ...e,
+  pages: e.pages.map((p) => ({ ...p, description: p.description ?? "" })),
+});
+
 export const loadExhibits = (): Promise<Exhibit[]> =>
-  withStore("readonly", (s) => s.getAll() as IDBRequest<Exhibit[]>);
+  withStore("readonly", (s) => s.getAll() as IDBRequest<Exhibit[]>).then((list) =>
+    list.map(migrate),
+  );
 
 export const saveExhibit = (e: Exhibit): Promise<void> =>
   withStore("readwrite", (s) => s.put(e)).then(() => undefined);
