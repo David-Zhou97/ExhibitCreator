@@ -17,9 +17,12 @@ import { Button, cls, CoverPicker, Field, IconBtn, LangBadge, LangChips, Modal, 
 
 type Selection = "cover" | string; // page id
 
-type ExportState =
-  | { phase: "translate" }
-  | { phase: "render"; exhibit: Exhibit; translated: boolean; done: number; total: number };
+interface ExportState {
+  exhibit: Exhibit;
+  translated: boolean;
+  done: number;
+  total: number;
+}
 
 export function Editor({
   exhibit,
@@ -31,7 +34,9 @@ export function Editor({
   onBack: () => void;
 }) {
   const [sel, setSel] = useState<Selection>("cover");
+  const [showTranslate, setShowTranslate] = useState(false);
   const [showExport, setShowExport] = useState(false);
+  const [translating, setTranslating] = useState(false);
   const [exporting, setExporting] = useState<ExportState | null>(null);
   /** Which language version of the book is shown in the editor. */
   const [viewTr, setViewTr] = useState(false);
@@ -40,6 +45,7 @@ export function Editor({
 
   const translatable = hasTranslations(exhibit);
   const translated = viewTr && translatable;
+  const sameLang = exhibit.inputLang === exhibit.outputLang;
 
   const selPageIndex = exhibit.pages.findIndex((p) => p.id === sel);
   const selPage = selPageIndex >= 0 ? exhibit.pages[selPageIndex] : null;
@@ -90,34 +96,45 @@ export function Editor({
   const patchImage = (page: ExhibitPage, imgId: string, p: Partial<ExhibitImage>) =>
     patchPage(page.id, { images: page.images.map((im) => (im.id === imgId ? { ...im, ...p } : im)) });
 
-  /* ---- PDF export ---- */
-  async function startExport(translate: boolean, apiKey: string) {
-    setShowExport(false);
-    const total = exhibit.pages.length + 1;
-    if (!translate) {
-      setExporting({ phase: "render", exhibit, translated: false, done: 0, total });
+  /* ---- Translation ---- */
+  async function startTranslate(apiKey: string) {
+    setShowTranslate(false);
+    if (
+      translatable &&
+      !confirm("Re-translating replaces the current translations, including any manual edits. Continue?")
+    )
       return;
-    }
-    setExporting({ phase: "translate" });
+    setTranslating(true);
     try {
       const next = await translateExhibit(exhibit, apiKey);
-      onChange(next); // keep translations in the saved exhibit
-      setViewTr(true); // switch the editor to the translated view
-      setExporting({ phase: "render", exhibit: next, translated: true, done: 0, total });
+      onChange(next); // translations are stored on the exhibit
+      setViewTr(true); // switch the editor to the translated view for review
     } catch (err) {
       console.error(err);
       alert(`Translation failed: ${(err as Error).message}`);
-      setExporting(null);
+    } finally {
+      setTranslating(false);
     }
   }
 
+  /* ---- PDF export ---- */
+  const startExport = (asTranslated: boolean) => {
+    setShowExport(false);
+    setExporting({
+      exhibit,
+      translated: asTranslated,
+      done: 0,
+      total: exhibit.pages.length + 1,
+    });
+  };
+
   useEffect(() => {
-    if (exporting?.phase !== "render" || exportStarted.current || !exportRef.current) return;
+    if (!exporting || exportStarted.current || !exportRef.current) return;
     exportStarted.current = true;
     (async () => {
       try {
         await exportBookPdf(exportRef.current!, pdfFilename(exhibit.title), (done, total) =>
-          setExporting((s) => (s?.phase === "render" ? { ...s, done, total } : s)),
+          setExporting((s) => (s ? { ...s, done, total } : s)),
         );
       } catch (err) {
         console.error(err);
@@ -138,9 +155,11 @@ export function Editor({
         <input
           className="bare-input"
           style={{ flex: 1, maxWidth: 420 }}
-          value={exhibit.title}
-          placeholder="Untitled exhibit"
-          onChange={(e) => patch({ title: e.target.value, titleTr: undefined })}
+          value={translated ? exhibit.titleTr ?? "" : exhibit.title}
+          placeholder={translated ? exhibit.title : "Untitled exhibit"}
+          onChange={(e) =>
+            patch(translated ? { titleTr: e.target.value } : { title: e.target.value })
+          }
         />
         <div style={{ flex: 1 }} />
         {translatable && (
@@ -165,18 +184,25 @@ export function Editor({
         <span className="save-hint">
           <Check size={12} strokeWidth={2.5} /> Saved locally
         </span>
+        {!sameLang && (
+          <Button
+            variant="soft"
+            size="sm"
+            icon={translating ? Loader2 : Languages}
+            disabled={translating || !!exporting}
+            onClick={() => setShowTranslate(true)}
+          >
+            {translating ? "Translating…" : translatable ? "Re-translate" : "Translate"}
+          </Button>
+        )}
         <Button
           variant="generate"
           size="sm"
           icon={exporting ? Loader2 : FileDown}
-          disabled={!!exporting}
+          disabled={!!exporting || translating}
           onClick={() => setShowExport(true)}
         >
-          {!exporting
-            ? "Export PDF"
-            : exporting.phase === "translate"
-              ? "Translating…"
-              : `Rendering ${exporting.done}/${exporting.total}…`}
+          {exporting ? `Rendering ${exporting.done}/${exporting.total}…` : "Export PDF"}
         </Button>
       </header>
 
@@ -233,7 +259,7 @@ export function Editor({
         {/* ---- Inspector ---- */}
         <aside className="inspector">
           {sel === "cover" || !selPage ? (
-            <CoverInspector exhibit={exhibit} patch={patch} />
+            <CoverInspector exhibit={exhibit} patch={patch} translated={translated} />
           ) : (
             <PageInspector
               page={selPage}
@@ -241,17 +267,31 @@ export function Editor({
               patchPage={patchPage}
               patchImage={patchImage}
               addImages={addImages}
+              translated={translated}
+              outputLang={langOf(exhibit.outputLang).short}
             />
           )}
         </aside>
       </div>
 
+      {showTranslate && (
+        <TranslateModal
+          exhibit={exhibit}
+          onClose={() => setShowTranslate(false)}
+          onTranslate={startTranslate}
+        />
+      )}
       {showExport && (
-        <ExportModal exhibit={exhibit} onClose={() => setShowExport(false)} onExport={startExport} />
+        <ExportModal
+          exhibit={exhibit}
+          hasTr={translatable}
+          onClose={() => setShowExport(false)}
+          onExport={startExport}
+        />
       )}
 
       {/* Offscreen full-size book render for PDF capture */}
-      {exporting?.phase === "render" && (
+      {exporting && (
         <div ref={exportRef} aria-hidden style={{ position: "absolute", top: 0, left: -2 * PAGE_W, width: PAGE_W }}>
           <div data-book-page>
             <CoverCanvas exhibit={exporting.exhibit} translated={exporting.translated} />
@@ -273,68 +313,100 @@ export function Editor({
   );
 }
 
-/* ---- Export modal ---- */
+/* ---- Translate modal ---- */
 
-function ExportModal({
+function TranslateModal({
   exhibit,
   onClose,
-  onExport,
+  onTranslate,
 }: {
   exhibit: Exhibit;
   onClose: () => void;
-  onExport: (translate: boolean, apiKey: string) => void;
+  onTranslate: (apiKey: string) => void;
 }) {
   const [apiKey, setApiKey] = useState(loadApiKey);
   const output = langOf(exhibit.outputLang);
-  const sameLang = exhibit.inputLang === exhibit.outputLang;
 
-  function exportTranslated() {
+  function translate() {
     saveApiKey(apiKey);
-    onExport(true, apiKey.trim());
+    onTranslate(apiKey.trim());
   }
 
   return (
-    <Modal title="Export PDF" onClose={onClose}>
+    <Modal title={`Translate into ${output.native}`} onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-        {sameLang ? (
-          <div className="inspector-note">
-            Input and output language are both {output.native}, so there is nothing to
-            translate — the book exports as written.
-          </div>
-        ) : (
-          <>
-            <div className="inspector-note">
-              Claude can translate the book's text — titles, gallery descriptions, plate
-              labels and captions — into <b>{output.native}</b> and export the translated
-              book. Afterwards you can flip between the original and translated views with
-              the language toggle in the top bar. Translations are regenerated on each
-              translated export.
-            </div>
-            <Field label="Anthropic API key">
-              <input
-                className="input"
-                type="password"
-                placeholder="sk-ant-…"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-              />
-            </Field>
-            <div className="inspector-note">
-              The key is stored only in this browser and sent only to the Anthropic API.
-            </div>
-          </>
-        )}
+        <div className="inspector-note">
+          Claude translates the book's text — titles, gallery descriptions, plate labels and
+          captions — into <b>{output.native}</b>. Afterwards the editor switches to the
+          translated view, where you can review and edit every translation before exporting;
+          the language toggle in the top bar flips between the two versions.
+        </div>
+        <Field label="Anthropic API key">
+          <input
+            className="input"
+            type="password"
+            placeholder="sk-ant-…"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+          />
+        </Field>
+        <div className="inspector-note">
+          The key is stored only in this browser and sent only to the Anthropic API.
+        </div>
       </div>
       <div className="modal-foot">
         <Button variant="dim" onClick={onClose}>
           Cancel
         </Button>
-        <Button variant={sameLang ? "generate" : "soft"} icon={FileDown} onClick={() => onExport(false, "")}>
+        <Button variant="generate" icon={Languages} disabled={!apiKey.trim()} onClick={translate}>
+          Translate
+        </Button>
+      </div>
+    </Modal>
+  );
+}
+
+/* ---- Export modal ---- */
+
+function ExportModal({
+  exhibit,
+  hasTr,
+  onClose,
+  onExport,
+}: {
+  exhibit: Exhibit;
+  hasTr: boolean;
+  onClose: () => void;
+  onExport: (asTranslated: boolean) => void;
+}) {
+  const output = langOf(exhibit.outputLang);
+  const sameLang = exhibit.inputLang === exhibit.outputLang;
+
+  return (
+    <Modal title="Export PDF" onClose={onClose}>
+      <div className="inspector-note">
+        {sameLang
+          ? "The book exports as written."
+          : hasTr
+            ? `Export the book as written, or the ${output.native} version you reviewed. ` +
+              "Fields without a translation fall back to the original text."
+            : `To export a ${output.native} version, use Translate in the top bar first, ` +
+              "review the result, then export."}
+      </div>
+      <div className="modal-foot">
+        <Button variant="dim" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button
+          variant={sameLang || !hasTr ? "generate" : "soft"}
+          icon={FileDown}
+          onClick={() => onExport(false)}
+        >
           {sameLang ? "Export PDF" : "Export original"}
         </Button>
-        {!sameLang && (
-          <Button variant="generate" icon={Languages} disabled={!apiKey.trim()} onClick={exportTranslated}>
-            Translate & export
+        {!sameLang && hasTr && (
+          <Button variant="generate" icon={FileDown} onClick={() => onExport(true)}>
+            Export {output.native}
           </Button>
         )}
       </div>
@@ -373,20 +445,41 @@ function FitStage({ children }: { children: ReactNode }) {
 function CoverInspector({
   exhibit,
   patch,
+  translated,
 }: {
   exhibit: Exhibit;
   patch: (p: Partial<Exhibit>) => void;
+  translated: boolean;
 }) {
+  const out = langOf(exhibit.outputLang).short;
   return (
     <>
       <div className="inspector-title">Cover</div>
-      <Field label="Title">
-        <input className="input" value={exhibit.title} placeholder="Untitled exhibit"
-          onChange={(e) => patch({ title: e.target.value, titleTr: undefined })} />
+      {translated && (
+        <div className="inspector-note">
+          Editing the <b>{langOf(exhibit.outputLang).native}</b> translation — the original
+          text is shown as a placeholder when a field is empty.
+        </div>
+      )}
+      <Field label={translated ? `Title (${out})` : "Title"}>
+        <input
+          className="input"
+          value={translated ? exhibit.titleTr ?? "" : exhibit.title}
+          placeholder={translated ? exhibit.title : "Untitled exhibit"}
+          onChange={(e) =>
+            patch(translated ? { titleTr: e.target.value } : { title: e.target.value })
+          }
+        />
       </Field>
-      <Field label="Subtitle">
-        <input className="input" value={exhibit.subtitle} placeholder="A short line for the cover"
-          onChange={(e) => patch({ subtitle: e.target.value, subtitleTr: undefined })} />
+      <Field label={translated ? `Subtitle (${out})` : "Subtitle"}>
+        <input
+          className="input"
+          value={translated ? exhibit.subtitleTr ?? "" : exhibit.subtitle}
+          placeholder={translated ? exhibit.subtitle : "A short line for the cover"}
+          onChange={(e) =>
+            patch(translated ? { subtitleTr: e.target.value } : { subtitle: e.target.value })
+          }
+        />
       </Field>
       <Field label="Input language">
         <LangChips value={exhibit.inputLang} onChange={(l) => patch({ inputLang: l })} />
@@ -410,12 +503,16 @@ function PageInspector({
   patchPage,
   patchImage,
   addImages,
+  translated,
+  outputLang,
 }: {
   page: ExhibitPage;
   index: number;
   patchPage: (id: string, p: Partial<ExhibitPage>) => void;
   patchImage: (page: ExhibitPage, imgId: string, p: Partial<ExhibitImage>) => void;
   addImages: (page: ExhibitPage, files: FileList | null) => Promise<void>;
+  translated: boolean;
+  outputLang: string;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const room = MAX_IMAGES_PER_PAGE - page.images.length;
@@ -423,18 +520,39 @@ function PageInspector({
   return (
     <>
       <div className="inspector-title">Page {plateNo(index)}</div>
-      <Field label="Page title">
-        <input className="input" value={page.title} placeholder="Untitled page"
-          onChange={(e) => patchPage(page.id, { title: e.target.value, titleTr: undefined })} />
+      {translated && (
+        <div className="inspector-note">
+          Editing the <b>{outputLang}</b> translation — the original text is shown as a
+          placeholder when a field is empty.
+        </div>
+      )}
+      <Field label={translated ? `Page title (${outputLang})` : "Page title"}>
+        <input
+          className="input"
+          value={translated ? page.titleTr ?? "" : page.title}
+          placeholder={translated ? page.title : "Untitled page"}
+          onChange={(e) =>
+            patchPage(page.id, translated ? { titleTr: e.target.value } : { title: e.target.value })
+          }
+        />
       </Field>
 
-      <Field label="Description (optional)">
+      <Field label={translated ? `Description (${outputLang})` : "Description (optional)"}>
         <textarea
           className="textarea"
           rows={3}
-          placeholder="Introduce this gallery — what do these results show?"
-          value={page.description}
-          onChange={(e) => patchPage(page.id, { description: e.target.value, descriptionTr: undefined })}
+          placeholder={
+            translated
+              ? page.description
+              : "Introduce this gallery — what do these results show?"
+          }
+          value={translated ? page.descriptionTr ?? "" : page.description}
+          onChange={(e) =>
+            patchPage(
+              page.id,
+              translated ? { descriptionTr: e.target.value } : { description: e.target.value },
+            )
+          }
         />
       </Field>
 
@@ -449,16 +567,30 @@ function PageInspector({
               <div className="img-row-main" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <input
                   className="input input-sm"
-                  placeholder={`Label (default ${plateNo(i)})`}
-                  value={im.label}
-                  onChange={(e) => patchImage(page, im.id, { label: e.target.value, labelTr: undefined })}
+                  placeholder={translated ? im.label || plateNo(i) : `Label (default ${plateNo(i)})`}
+                  value={translated ? im.labelTr ?? "" : im.label}
+                  onChange={(e) =>
+                    patchImage(
+                      page,
+                      im.id,
+                      translated ? { labelTr: e.target.value } : { label: e.target.value },
+                    )
+                  }
                 />
                 <textarea
                   className="textarea"
                   rows={2}
-                  placeholder="Describe this image…"
-                  value={im.description}
-                  onChange={(e) => patchImage(page, im.id, { description: e.target.value, descriptionTr: undefined })}
+                  placeholder={translated ? im.description : "Describe this image…"}
+                  value={translated ? im.descriptionTr ?? "" : im.description}
+                  onChange={(e) =>
+                    patchImage(
+                      page,
+                      im.id,
+                      translated
+                        ? { descriptionTr: e.target.value }
+                        : { description: e.target.value },
+                    )
+                  }
                 />
               </div>
               <div className="img-row-tools">
