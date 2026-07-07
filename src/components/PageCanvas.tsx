@@ -90,10 +90,7 @@ export function PageCanvas({
                     className="pc-cell"
                     style={{ width: aspects[i] * layout.rowHeights[r], margin: 0 }}
                   >
-                    {/* background-image instead of <img object-fit:cover>: html2canvas
-                        (PDF export) ignores object-fit and would stretch the image,
-                        but it renders background-size: cover correctly. Cells are
-                        aspect-exact, so nothing is cropped either way. */}
+                    {/* Cells are aspect-exact, so the cover-fit never crops. */}
                     <div
                       className="bg-cover-img"
                       role="img"
@@ -148,7 +145,15 @@ export function CoverCanvas({
       {cover.kind === "gradient" ? (
         <div className="pc-cover-media pc-cover-gradient">
           <div className="pc-cover-light" />
-          <img className="pc-cover-mio" src="/brand/mio-mascot.png" alt="" />
+          {/* background-image divs (not <img>): the PDF renderer inlines CSS
+              backgrounds reliably, while nested <img> decoding can race the
+              SVG rasterization and drop the picture from the export. */}
+          <div className="pc-cover-mio">
+            <div
+              className="pc-cover-mio-art"
+              style={{ backgroundImage: 'url("/brand/mio-mascot.png")' }}
+            />
+          </div>
           <div className="pc-cover-scrim" />
         </div>
       ) : (
@@ -172,7 +177,10 @@ export function CoverCanvas({
           </div>
         )}
         <div className="pc-cover-foot">
-          <img src="/brand/pixai-logo-mark.svg" alt="" />
+          <div
+            className="pc-cover-foot-logo"
+            style={{ backgroundImage: 'url("/brand/pixai-logo-mark.svg")' }}
+          />
           <span>PixAI · Model Capabilities Exhibit</span>
         </div>
       </div>
