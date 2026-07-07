@@ -293,6 +293,16 @@ function PageInspector({
           onChange={(e) => patchPage(page.id, { title: e.target.value })} />
       </Field>
 
+      <Field label="Description (optional)">
+        <textarea
+          className="textarea"
+          rows={3}
+          placeholder="Introduce this gallery — what do these results show?"
+          value={page.description}
+          onChange={(e) => patchPage(page.id, { description: e.target.value })}
+        />
+      </Field>
+
       <Field label={`Images (${page.images.length}/${MAX_IMAGES_PER_PAGE})`}>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {page.images.map((im, i) => (

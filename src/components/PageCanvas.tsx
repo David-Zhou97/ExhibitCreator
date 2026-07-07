@@ -47,12 +47,21 @@ export function PageCanvas({
       </div>
       <div className="pc-title">{page.title.trim() || "Untitled page"}</div>
       <div className="pc-rule" />
+      {page.description.trim() && <p className="pc-desc">{page.description}</p>}
 
       {page.images.length > 0 ? (
         <div className="pc-mosaic" style={gridStyle}>
           {page.images.map((im, i) => (
             <figure key={im.id} className="pc-cell" style={{ gridArea: AREA_NAMES[i], margin: 0 }}>
-              <img src={im.src} alt={im.description || `Image ${i + 1}`} />
+              {/* background-image instead of <img object-fit:cover>: html2canvas
+                  (PDF export) ignores object-fit and would stretch the image,
+                  but it crops background-size: cover correctly. */}
+              <div
+                className="bg-cover-img"
+                role="img"
+                aria-label={im.description || `Image ${i + 1}`}
+                style={{ backgroundImage: `url("${im.src}")` }}
+              />
               {showPlates && <span className="pc-plate">{plateNo(i)}</span>}
             </figure>
           ))}
@@ -97,7 +106,7 @@ export function CoverCanvas({ exhibit }: { exhibit: Exhibit }) {
         </div>
       ) : (
         <div className="pc-cover-media">
-          <img className="full" src={cover.src} alt="" />
+          <div className="bg-cover-img" style={{ backgroundImage: `url("${cover.src}")` }} />
           <div className="pc-cover-scrim" />
         </div>
       )}
