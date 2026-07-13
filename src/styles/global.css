@@ -344,6 +344,33 @@ button { font-family: inherit; }
   font-weight: 500; border-radius: 13px; letter-spacing: 0.05em;
   max-width: 75%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+/* Edits template: before → after pair rows with a note in the middle */
+.pc-pair-row { display: flex; align-items: center; justify-content: center; gap: 14px; flex: none; }
+.pc-pair-mid {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; flex: none; padding: 0 6px;
+}
+.pc-pair-arrow { font-size: 30px; line-height: 1; color: var(--pix-purple-lite); }
+.pc-pair-note {
+  font-size: 14px; font-weight: 500; line-height: 1.4; color: var(--pix-600);
+  text-align: center; max-width: 100%; overflow-wrap: break-word;
+}
+.pc-pair-empty { border: 2px dashed var(--pix-200); border-radius: 12px; flex: none; }
+
+/* Reference template: references left, generated result right */
+.pc-refsplit { display: flex; align-items: stretch; flex: none; }
+.pc-refcol { display: flex; flex-direction: column; gap: 10px; min-width: 0; flex: none; }
+.pc-sec-head {
+  height: 20px; font-size: 11px; font-weight: 600; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--pix-400); flex: none;
+}
+.pc-refgrid {
+  flex: 1; display: flex; flex-direction: column; gap: 10px;
+  align-items: center; justify-content: center; min-height: 0;
+}
+.pc-refrow { display: flex; gap: 10px; flex: none; }
+.pc-refout { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+
 .pc-captions {
   margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--pix-200);
   display: flex; flex-wrap: wrap; gap: 6px 28px; flex: none;

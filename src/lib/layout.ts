@@ -5,8 +5,15 @@
  *  best fills the canvas; if they'd overflow, everything scales down
  *  uniformly, and any leftover space becomes centered margins. */
 
+import type { PageTemplate } from "./types";
+
 export const MAX_IMAGES_PER_PAGE = 8;
 const MAX_ROWS = 3;
+
+/** Image capacity per page template: 3 before/after pairs, or up to 6
+ *  references plus one result, or an 8-image gallery. */
+export const maxImagesFor = (template: PageTemplate): number =>
+  template === "edits" ? 6 : template === "reference" ? 7 : MAX_IMAGES_PER_PAGE;
 
 export const plateNo = (i: number) => String(i + 1).padStart(2, "0");
 

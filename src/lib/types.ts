@@ -17,11 +17,21 @@ export interface ExhibitImage {
   descriptionTr?: string;
 }
 
+/** Page layout templates:
+ *  - gallery:   justified mosaic of results (default)
+ *  - edits:     before → after pairs with a short edit note (up to 3 pairs)
+ *  - reference: reference images on the left, generated result on the right */
+export type PageTemplate = "gallery" | "edits" | "reference";
+
 export interface ExhibitPage {
   id: string;
   title: string;
   /** Optional intro paragraph describing the gallery, shown under the title. */
   description: string;
+  template: PageTemplate;
+  /** Interpretation depends on template: gallery = all results; edits =
+   *  consecutive (before, after) pairs, the after image's description is the
+   *  edit note; reference = references first, the LAST image is the result. */
   images: ExhibitImage[];
   titleTr?: string;
   descriptionTr?: string;
@@ -52,6 +62,7 @@ export const newPage = (n: number): ExhibitPage => ({
   id: uid(),
   title: `Untitled page ${n}`,
   description: "",
+  template: "gallery",
   images: [],
 });
 

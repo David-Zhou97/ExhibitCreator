@@ -5,10 +5,10 @@ import {
 } from "lucide-react";
 import {
   arrayMove, newPage, uid,
-  type Exhibit, type ExhibitImage, type ExhibitPage,
+  type Exhibit, type ExhibitImage, type ExhibitPage, type PageTemplate,
 } from "../lib/types";
 import { readImageFile } from "../lib/images";
-import { MAX_IMAGES_PER_PAGE, plateNo } from "../lib/layout";
+import { maxImagesFor, plateNo } from "../lib/layout";
 import { exportBookPdf, pdfFilename } from "../lib/pdf";
 import { hasTranslations, loadApiKey, saveApiKey, translateExhibit } from "../lib/translate";
 import { langOf } from "../lib/lang";
@@ -74,10 +74,11 @@ export function Editor({
 
   async function addImages(page: ExhibitPage, files: FileList | null) {
     if (!files || files.length === 0) return;
-    const room = MAX_IMAGES_PER_PAGE - page.images.length;
+    const max = maxImagesFor(page.template);
+    const room = max - page.images.length;
     const list = Array.from(files);
     if (list.length > room) {
-      alert(`Pages hold up to ${MAX_IMAGES_PER_PAGE} images — adding the first ${room}.`);
+      alert(`This layout holds up to ${max} images — adding the first ${room}.`);
     }
     try {
       const imported = await Promise.all(list.slice(0, Math.max(room, 0)).map(readImageFile));
@@ -515,7 +516,18 @@ function PageInspector({
   outputLang: string;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const room = MAX_IMAGES_PER_PAGE - page.images.length;
+  const max = maxImagesFor(page.template);
+  const room = max - page.images.length;
+  const edits = page.template === "edits";
+
+  const TEMPLATES: Array<{ id: PageTemplate; name: string }> = [
+    { id: "gallery", name: "Gallery" },
+    { id: "edits", name: "Before → after" },
+    { id: "reference", name: "Reference → result" },
+  ];
+
+  /** Pair-position tag for the edits template ("1A" original, "1B" edited). */
+  const pairTag = (i: number) => `${Math.floor(i / 2) + 1}${i % 2 === 0 ? "A" : "B"}`;
 
   return (
     <>
@@ -556,42 +568,77 @@ function PageInspector({
         />
       </Field>
 
-      <Field label={`Images (${page.images.length}/${MAX_IMAGES_PER_PAGE})`}>
+      <Field label="Page layout">
+        <div className="chip-row">
+          {TEMPLATES.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={cls("chip", page.template === t.id && "active")}
+              onClick={() => patchPage(page.id, { template: t.id })}
+            >
+              {t.name}
+            </button>
+          ))}
+        </div>
+      </Field>
+
+      <Field label={`Images (${page.images.length}/${max})`}>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {page.images.map((im, i) => (
             <div className="img-row" key={im.id}>
               <div style={{ position: "relative", flex: "none" }}>
                 <img className="img-row-thumb" src={im.src} alt="" />
-                <span className="img-row-no">{plateNo(i)}</span>
+                <span className="img-row-no">
+                  {edits
+                    ? pairTag(i)
+                    : page.template === "reference" && i === page.images.length - 1
+                      ? "OUT"
+                      : plateNo(i)}
+                </span>
               </div>
               <div className="img-row-main" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <input
-                  className="input input-sm"
-                  placeholder={translated ? im.label || plateNo(i) : `Label (default ${plateNo(i)})`}
-                  value={translated ? im.labelTr ?? "" : im.label}
-                  onChange={(e) =>
-                    patchImage(
-                      page,
-                      im.id,
-                      translated ? { labelTr: e.target.value } : { label: e.target.value },
-                    )
-                  }
-                />
-                <textarea
-                  className="textarea"
-                  rows={2}
-                  placeholder={translated ? im.description : "Describe this image…"}
-                  value={translated ? im.descriptionTr ?? "" : im.description}
-                  onChange={(e) =>
-                    patchImage(
-                      page,
-                      im.id,
+                {!edits && (
+                  <input
+                    className="input input-sm"
+                    placeholder={translated ? im.label || plateNo(i) : `Label (default ${plateNo(i)})`}
+                    value={translated ? im.labelTr ?? "" : im.label}
+                    onChange={(e) =>
+                      patchImage(
+                        page,
+                        im.id,
+                        translated ? { labelTr: e.target.value } : { label: e.target.value },
+                      )
+                    }
+                  />
+                )}
+                {edits && i % 2 === 0 ? (
+                  <div className="inspector-note" style={{ paddingTop: 4 }}>
+                    Original image of pair {Math.floor(i / 2) + 1}
+                  </div>
+                ) : (
+                  <textarea
+                    className="textarea"
+                    rows={2}
+                    placeholder={
                       translated
-                        ? { descriptionTr: e.target.value }
-                        : { description: e.target.value },
-                    )
-                  }
-                />
+                        ? im.description
+                        : edits
+                          ? "Edit note — a few words, e.g. “Background removed”"
+                          : "Describe this image…"
+                    }
+                    value={translated ? im.descriptionTr ?? "" : im.description}
+                    onChange={(e) =>
+                      patchImage(
+                        page,
+                        im.id,
+                        translated
+                          ? { descriptionTr: e.target.value }
+                          : { description: e.target.value },
+                      )
+                    }
+                  />
+                )}
               </div>
               <div className="img-row-tools">
                 <IconBtn icon={ChevronUp} label="Move image earlier" size={13} disabled={i === 0}
@@ -620,11 +667,32 @@ function PageInspector({
           />
         </div>
       </Field>
+      {page.images.length > max && (
+        <div className="inspector-note" style={{ color: "var(--danger)" }}>
+          This layout shows only the first {max} images — remove {page.images.length - max} to
+          match.
+        </div>
+      )}
       <div className="inspector-note">
-        Frames follow each image's orientation — wide images get wide frames, tall images
-        tall ones — and fill the page automatically (up to {MAX_IMAGES_PER_PAGE}). Labels
-        replace the plate numbers on the page; descriptions appear as captions along the
-        bottom.
+        {edits ? (
+          <>
+            Images pair up in order — 1A is the original, 1B the edited version, and so on
+            (up to 3 pairs). The note on each edited image appears between the pair on the
+            page. Vertical and horizontal images both work; a pair shares its height.
+          </>
+        ) : page.template === "reference" ? (
+          <>
+            The <b>last</b> image is the generated result, shown large on the right; all
+            other images are references, arranged automatically on the left (up to {max - 1}).
+            Use the arrows to reorder. Descriptions appear as captions along the bottom.
+          </>
+        ) : (
+          <>
+            Frames follow each image's orientation — wide images get wide frames, tall images
+            tall ones — and fill the page automatically (up to {max}). Labels replace the
+            plate numbers on the page; descriptions appear as captions along the bottom.
+          </>
+        )}
       </div>
     </>
   );

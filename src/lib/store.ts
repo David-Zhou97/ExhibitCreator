@@ -49,6 +49,7 @@ async function migrate(e: Exhibit): Promise<Exhibit> {
       e.pages.map(async (p) => ({
         ...p,
         description: p.description ?? "",
+        template: p.template ?? "gallery",
         images: await Promise.all(
           p.images.map(async (im) => ({
             ...im,

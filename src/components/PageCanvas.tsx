@@ -1,8 +1,8 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { ImagePlus } from "lucide-react";
 import type { Exhibit, ExhibitImage, ExhibitPage } from "../lib/types";
-import { langOf } from "../lib/lang";
-import { justifiedLayout, plateNo } from "../lib/layout";
+import { langOf, type UiStrings } from "../lib/lang";
+import { justifiedLayout, maxImagesFor, plateNo } from "../lib/layout";
 
 /** Fixed book-page design size: A4 landscape at 96dpi. Rendered 1:1 and
  *  scaled with CSS transforms for previews / thumbnails. */
@@ -18,6 +18,187 @@ const pick = (original: string, tr: string | undefined, translated: boolean) =>
 
 const plateLabel = (im: ExhibitImage, i: number, translated: boolean) =>
   pick(im.label, im.labelTr, translated).trim() || plateNo(i);
+
+const aspectOf = (im: ExhibitImage) =>
+  im.width > 0 && im.height > 0 ? im.width / im.height : 1;
+
+interface Box {
+  w: number;
+  h: number;
+}
+
+/** Aspect-exact image cell with an optional plate/tag badge. */
+function Cell({
+  im,
+  w,
+  h,
+  badge,
+}: {
+  im: ExhibitImage;
+  w: number;
+  h: number;
+  badge?: string;
+}) {
+  return (
+    <figure className="pc-cell" style={{ width: w, height: h, margin: 0 }}>
+      <div
+        className="bg-cover-img"
+        role="img"
+        aria-label={im.description || "Image"}
+        style={{ backgroundImage: `url("${im.src}")` }}
+      />
+      {badge && <span className="pc-plate">{badge}</span>}
+    </figure>
+  );
+}
+
+/* ---- Template: gallery (justified mosaic) ----------------------------------- */
+
+function GalleryMosaic({
+  images,
+  box,
+  showPlates,
+  translated,
+}: {
+  images: ExhibitImage[];
+  box: Box;
+  showPlates: boolean;
+  translated: boolean;
+}) {
+  const aspects = images.map(aspectOf);
+  const layout = justifiedLayout(aspects, box.w, box.h, CELL_GAP);
+  return (
+    <>
+      {layout.rows.map((row, r) => (
+        <div key={r} className="pc-row" style={{ height: layout.rowHeights[r] }}>
+          {row.map((i) => (
+            <Cell
+              key={images[i].id}
+              im={images[i]}
+              w={aspects[i] * layout.rowHeights[r]}
+              h={layout.rowHeights[r]}
+              badge={showPlates ? plateLabel(images[i], i, translated) : undefined}
+            />
+          ))}
+        </div>
+      ))}
+    </>
+  );
+}
+
+/* ---- Template: edits (before → after pairs with a note) --------------------- */
+
+const MID_W = 150; // arrow + note column between before and after
+
+function EditPairs({
+  images,
+  box,
+  translated,
+  ui,
+}: {
+  images: ExhibitImage[];
+  box: Box;
+  translated: boolean;
+  ui: UiStrings;
+}) {
+  const pairs: Array<[ExhibitImage, ExhibitImage | undefined]> = [];
+  for (let i = 0; i < images.length; i += 2) pairs.push([images[i], images[i + 1]]);
+  const slotH = (box.h - CELL_GAP * (pairs.length - 1)) / pairs.length;
+
+  return (
+    <>
+      {pairs.map(([before, after]) => {
+        const aB = aspectOf(before);
+        const aA = after ? aspectOf(after) : aB;
+        // Both images share a height; shrink if the pair would overflow the row.
+        const h = Math.min(slotH, (box.w - MID_W - CELL_GAP * 2) / (aB + aA));
+        const note = after ? pick(after.description, after.descriptionTr, translated) : "";
+        return (
+          <div key={before.id} className="pc-pair-row" style={{ height: slotH }}>
+            <Cell im={before} w={aB * h} h={h} badge={ui.before} />
+            <div className="pc-pair-mid" style={{ width: MID_W }}>
+              <span className="pc-pair-arrow">→</span>
+              {note.trim() && <span className="pc-pair-note">{note}</span>}
+            </div>
+            {after ? (
+              <Cell im={after} w={aA * h} h={h} badge={ui.after} />
+            ) : (
+              <div className="pc-pair-empty" style={{ width: aB * h, height: h }} />
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+/* ---- Template: reference (references left, result right) -------------------- */
+
+function ReferenceSplit({
+  images,
+  box,
+  showPlates,
+  translated,
+  ui,
+}: {
+  images: ExhibitImage[];
+  box: Box;
+  showPlates: boolean;
+  translated: boolean;
+  ui: UiStrings;
+}) {
+  const out = images[images.length - 1];
+  const refs = images.slice(0, -1);
+  const MID = 76;
+  const HEAD = 30; // section header line
+  const sectionH = box.h - HEAD;
+  const leftW = refs.length > 0 ? Math.round((box.w - MID) * 0.44) : 0;
+  const rightW = box.w - MID - leftW;
+  const aOut = aspectOf(out);
+  const outH = Math.min(sectionH, rightW / aOut);
+  const refLayout = justifiedLayout(refs.map(aspectOf), leftW, sectionH, 10);
+
+  return (
+    <div className="pc-refsplit" style={{ width: box.w, height: box.h }}>
+      {refs.length > 0 && (
+        <>
+          <div className="pc-refcol" style={{ width: leftW }}>
+            <div className="pc-sec-head">{ui.references}</div>
+            <div className="pc-refgrid">
+              {refLayout.rows.map((row, r) => (
+                <div key={r} className="pc-refrow" style={{ height: refLayout.rowHeights[r] }}>
+                  {row.map((i) => (
+                    <Cell
+                      key={refs[i].id}
+                      im={refs[i]}
+                      w={aspectOf(refs[i]) * refLayout.rowHeights[r]}
+                      h={refLayout.rowHeights[r]}
+                      badge={showPlates ? plateLabel(refs[i], i, translated) : undefined}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="pc-pair-mid" style={{ width: MID }}>
+            <span className="pc-pair-arrow">→</span>
+          </div>
+        </>
+      )}
+      <div className="pc-refcol" style={{ width: refs.length > 0 ? rightW : box.w }}>
+        <div className="pc-sec-head">{ui.result}</div>
+        <div className="pc-refout">
+          <Cell
+            im={out}
+            w={aOut * outH}
+            h={outH}
+            badge={showPlates ? plateLabel(out, images.length - 1, translated) : undefined}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /* ---- Content page ---------------------------------------------------------- */
 
@@ -39,13 +220,18 @@ export function PageCanvas({
   /** Show the output-language version of all text. */
   translated?: boolean;
 }) {
-  const captions = page.images.filter((im) => im.description.trim());
-  const showPlates = page.images.length > 1 || captions.length > 0;
+  const template = page.template;
+  const images = page.images.slice(0, maxImagesFor(template));
+  // Edits pages show the after-image description inline as the edit note,
+  // so they have no caption footer.
+  const captions = template === "edits" ? [] : images.filter((im) => im.description.trim());
+  const showPlates = template !== "edits" && (images.length > 1 || captions.length > 0);
+  const ui = langOf(translated ? exhibit.outputLang : exhibit.inputLang).ui;
 
   // The mosaic's box depends on how much the title/description/captions take,
   // so measure it after layout and compute the rows from real dimensions.
   const mosaicRef = useRef<HTMLDivElement>(null);
-  const [box, setBox] = useState({ w: PAGE_W - 120, h: 480 });
+  const [box, setBox] = useState<Box>({ w: PAGE_W - 120, h: 480 });
   useLayoutEffect(() => {
     const el = mosaicRef.current;
     if (!el) return;
@@ -53,11 +239,6 @@ export function PageCanvas({
     const h = el.clientHeight;
     if (w > 0 && h > 0) setBox((b) => (b.w === w && b.h === h ? b : { w, h }));
   });
-
-  const aspects = page.images.map((im) =>
-    im.width > 0 && im.height > 0 ? im.width / im.height : 1,
-  );
-  const layout = justifiedLayout(aspects, box.w, box.h, CELL_GAP);
 
   return (
     <div className="pc">
@@ -78,31 +259,21 @@ export function PageCanvas({
         <p className="pc-desc">{pick(page.description, page.descriptionTr, translated)}</p>
       )}
 
-      {page.images.length > 0 ? (
+      {images.length > 0 ? (
         <div className="pc-mosaic" ref={mosaicRef}>
-          {layout.rows.map((row, r) => (
-            <div key={r} className="pc-row" style={{ height: layout.rowHeights[r] }}>
-              {row.map((i) => {
-                const im = page.images[i];
-                return (
-                  <figure
-                    key={im.id}
-                    className="pc-cell"
-                    style={{ width: aspects[i] * layout.rowHeights[r], margin: 0 }}
-                  >
-                    {/* Cells are aspect-exact, so the cover-fit never crops. */}
-                    <div
-                      className="bg-cover-img"
-                      role="img"
-                      aria-label={im.description || `Image ${i + 1}`}
-                      style={{ backgroundImage: `url("${im.src}")` }}
-                    />
-                    {showPlates && <span className="pc-plate">{plateLabel(im, i, translated)}</span>}
-                  </figure>
-                );
-              })}
-            </div>
-          ))}
+          {template === "edits" ? (
+            <EditPairs images={images} box={box} translated={translated} ui={ui} />
+          ) : template === "reference" ? (
+            <ReferenceSplit
+              images={images}
+              box={box}
+              showPlates={showPlates}
+              translated={translated}
+              ui={ui}
+            />
+          ) : (
+            <GalleryMosaic images={images} box={box} showPlates={showPlates} translated={translated} />
+          )}
         </div>
       ) : editing ? (
         <div className="pc-empty">
@@ -115,7 +286,7 @@ export function PageCanvas({
 
       {captions.length > 0 && (
         <div className="pc-captions">
-          {page.images.map((im, i) =>
+          {images.map((im, i) =>
             im.description.trim() ? (
               <div key={im.id} className="pc-caption">
                 <b>{plateLabel(im, i, translated)}</b>
