@@ -344,8 +344,19 @@ button { font-family: inherit; }
   font-weight: 500; border-radius: 13px; letter-spacing: 0.05em;
   max-width: 75%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-/* Edits template: before → after pair rows with a note in the middle */
+/* Edits template: before → after pair rows with a note in the middle.
+   Each image sits centered on a shaded backdrop panel of constant width,
+   so rows look consistent whether the sources are vertical or horizontal. */
 .pc-pair-row { display: flex; align-items: center; justify-content: center; gap: 14px; flex: none; }
+.pc-pair-panel {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(150deg, var(--pix-100), var(--pix-purple-super-lite));
+  border-radius: 14px; flex: none;
+}
+.pc-pair-panel.empty { background: none; border: 2px dashed var(--pix-200); }
+.pc-pair-img {
+  border-radius: 10px; box-shadow: var(--shadow-md); background-color: #fff; flex: none;
+}
 .pc-pair-mid {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 8px; flex: none; padding: 0 6px;
@@ -355,7 +366,6 @@ button { font-family: inherit; }
   font-size: 14px; font-weight: 500; line-height: 1.4; color: var(--pix-600);
   text-align: center; max-width: 100%; overflow-wrap: break-word;
 }
-.pc-pair-empty { border: 2px dashed var(--pix-200); border-radius: 12px; flex: none; }
 
 /* Reference template: references left, generated result right */
 .pc-refsplit { display: flex; align-items: stretch; flex: none; }

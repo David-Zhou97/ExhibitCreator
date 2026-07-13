@@ -3,6 +3,7 @@ import { ImagePlus } from "lucide-react";
 import type { Exhibit, ExhibitImage, ExhibitPage } from "../lib/types";
 import { langOf, type UiStrings } from "../lib/lang";
 import { justifiedLayout, maxImagesFor, plateNo } from "../lib/layout";
+import { cls } from "./ui";
 
 /** Fixed book-page design size: A4 landscape at 96dpi. Rendered 1:1 and
  *  scaled with CSS transforms for previews / thumbnails. */
@@ -89,6 +90,44 @@ function GalleryMosaic({
 /* ---- Template: edits (before → after pairs with a note) --------------------- */
 
 const MID_W = 150; // arrow + note column between before and after
+const PANEL_PAD = 14; // breathing room between an image and its backdrop panel
+
+/** A fixed-size shaded backdrop panel with the image aspect-fit and centered
+ *  on it — every pair row gets identical panels, so the page reads the same
+ *  whether the sources are vertical or horizontal. */
+function PairPanel({
+  im,
+  w,
+  h,
+  badge,
+  translated,
+}: {
+  im: ExhibitImage | undefined;
+  w: number;
+  h: number;
+  badge: string;
+  translated: boolean;
+}) {
+  let img: ReactNode = null;
+  if (im) {
+    const a = aspectOf(im);
+    const imgH = Math.min(h - PANEL_PAD * 2, (w - PANEL_PAD * 2) / a);
+    img = (
+      <div
+        className="pc-pair-img bg-cover-img"
+        role="img"
+        aria-label={pick(im.description, im.descriptionTr, translated) || "Image"}
+        style={{ width: a * imgH, height: imgH, backgroundImage: `url("${im.src}")` }}
+      />
+    );
+  }
+  return (
+    <div className={cls("pc-pair-panel", !im && "empty")} style={{ width: w, height: h }}>
+      {img}
+      <span className="pc-plate">{badge}</span>
+    </div>
+  );
+}
 
 function EditPairs({
   images,
@@ -104,27 +143,21 @@ function EditPairs({
   const pairs: Array<[ExhibitImage, ExhibitImage | undefined]> = [];
   for (let i = 0; i < images.length; i += 2) pairs.push([images[i], images[i + 1]]);
   const slotH = (box.h - CELL_GAP * (pairs.length - 1)) / pairs.length;
+  // Same panel width on every row, regardless of the images' aspect ratios.
+  const colW = (box.w - MID_W - CELL_GAP * 2) / 2;
 
   return (
     <>
       {pairs.map(([before, after]) => {
-        const aB = aspectOf(before);
-        const aA = after ? aspectOf(after) : aB;
-        // Both images share a height; shrink if the pair would overflow the row.
-        const h = Math.min(slotH, (box.w - MID_W - CELL_GAP * 2) / (aB + aA));
         const note = after ? pick(after.description, after.descriptionTr, translated) : "";
         return (
           <div key={before.id} className="pc-pair-row" style={{ height: slotH }}>
-            <Cell im={before} w={aB * h} h={h} badge={ui.before} />
+            <PairPanel im={before} w={colW} h={slotH} badge={ui.before} translated={translated} />
             <div className="pc-pair-mid" style={{ width: MID_W }}>
               <span className="pc-pair-arrow">→</span>
               {note.trim() && <span className="pc-pair-note">{note}</span>}
             </div>
-            {after ? (
-              <Cell im={after} w={aA * h} h={h} badge={ui.after} />
-            ) : (
-              <div className="pc-pair-empty" style={{ width: aB * h, height: h }} />
-            )}
+            <PairPanel im={after} w={colW} h={slotH} badge={ui.after} translated={translated} />
           </div>
         );
       })}
