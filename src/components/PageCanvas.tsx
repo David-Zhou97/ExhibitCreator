@@ -367,11 +367,6 @@ export function CoverCanvas({
         </div>
       )}
       <div className={gradient ? "pc-cover-content with-mio" : "pc-cover-content"}>
-        <span className="pc-cover-lang">
-          {langOf(exhibit.inputLang).native}
-          <span style={{ opacity: 0.75 }}>→</span>
-          {langOf(exhibit.outputLang).native}
-        </span>
         <div className="pc-cover-title">
           {pick(exhibit.title, exhibit.titleTr, translated).trim() || "Untitled exhibit"}
         </div>

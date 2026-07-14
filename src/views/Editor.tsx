@@ -11,7 +11,7 @@ import { readImageFile } from "../lib/images";
 import { maxImagesFor, plateNo } from "../lib/layout";
 import { exportBookPdf, pdfFilename } from "../lib/pdf";
 import { hasTranslations, loadApiKey, saveApiKey, translateExhibit } from "../lib/translate";
-import { langOf } from "../lib/lang";
+import { LANGUAGES, langOf } from "../lib/lang";
 import { CoverCanvas, PAGE_H, PAGE_W, PageCanvas, Scaled } from "../components/PageCanvas";
 import { Button, cls, CoverPicker, Field, IconBtn, LangBadge, LangChips, Modal, Wordmark } from "../components/ui";
 
@@ -34,6 +34,8 @@ export function Editor({
   onBack: () => void;
 }) {
   const [sel, setSel] = useState<Selection>("cover");
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [dropIdx, setDropIdx] = useState<number | null>(null);
   const [showTranslate, setShowTranslate] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [translating, setTranslating] = useState(false);
@@ -45,7 +47,6 @@ export function Editor({
 
   const translatable = hasTranslations(exhibit);
   const translated = viewTr && translatable;
-  const sameLang = exhibit.inputLang === exhibit.outputLang;
 
   const selPageIndex = exhibit.pages.findIndex((p) => p.id === sel);
   const selPage = selPageIndex >= 0 ? exhibit.pages[selPageIndex] : null;
@@ -71,6 +72,14 @@ export function Editor({
 
   const movePage = (index: number, dir: -1 | 1) =>
     patch({ pages: arrayMove(exhibit.pages, index, index + dir) });
+
+  function dropPage(target: number) {
+    if (dragIdx !== null && dragIdx !== target) {
+      patch({ pages: arrayMove(exhibit.pages, dragIdx, target) });
+    }
+    setDragIdx(null);
+    setDropIdx(null);
+  }
 
   async function addImages(page: ExhibitPage, files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -98,7 +107,7 @@ export function Editor({
     patchPage(page.id, { images: page.images.map((im) => (im.id === imgId ? { ...im, ...p } : im)) });
 
   /* ---- Translation ---- */
-  async function startTranslate(apiKey: string) {
+  async function startTranslate(apiKey: string, target: Exhibit["outputLang"]) {
     setShowTranslate(false);
     if (
       translatable &&
@@ -107,7 +116,8 @@ export function Editor({
       return;
     setTranslating(true);
     try {
-      const next = await translateExhibit(exhibit, apiKey);
+      // The chosen target becomes the exhibit's output language.
+      const next = await translateExhibit({ ...exhibit, outputLang: target }, apiKey);
       onChange(next); // translations are stored on the exhibit
       setViewTr(true); // switch the editor to the translated view for review
     } catch (err) {
@@ -185,17 +195,15 @@ export function Editor({
         <span className="save-hint">
           <Check size={12} strokeWidth={2.5} /> Saved locally
         </span>
-        {!sameLang && (
-          <Button
-            variant="soft"
-            size="sm"
-            icon={translating ? Loader2 : Languages}
-            disabled={translating || !!exporting}
-            onClick={() => setShowTranslate(true)}
-          >
-            {translating ? "Translating…" : translatable ? "Re-translate" : "Translate"}
-          </Button>
-        )}
+        <Button
+          variant="soft"
+          size="sm"
+          icon={translating ? Loader2 : Languages}
+          disabled={translating || !!exporting}
+          onClick={() => setShowTranslate(true)}
+        >
+          {translating ? "Translating…" : translatable ? "Re-translate" : "Translate"}
+        </Button>
         <Button
           variant="generate"
           size="sm"
@@ -220,7 +228,34 @@ export function Editor({
             <div className="thumb-label">Cover</div>
           </div>
           {exhibit.pages.map((page, i) => (
-            <div className="thumb-wrap" key={page.id}>
+            <div
+              className={cls(
+                "thumb-wrap",
+                dragIdx === i && "dragging",
+                dropIdx === i && dragIdx !== null && dragIdx !== i && "drag-over",
+              )}
+              key={page.id}
+              draggable
+              onDragStart={(e) => {
+                setDragIdx(i);
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("text/plain", String(i)); // required by Firefox
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "move";
+                setDropIdx(i);
+              }}
+              onDragLeave={() => setDropIdx((d) => (d === i ? null : d))}
+              onDrop={(e) => {
+                e.preventDefault();
+                dropPage(i);
+              }}
+              onDragEnd={() => {
+                setDragIdx(null);
+                setDropIdx(null);
+              }}
+            >
               <button type="button" className={cls("thumb", sel === page.id && "sel")} onClick={() => setSel(page.id)}>
                 <Scaled width={160}>
                   <PageCanvas exhibit={exhibit} page={page} pageNo={i + 1} pageCount={exhibit.pages.length + 1} editing translated={translated} />
@@ -323,25 +358,32 @@ function TranslateModal({
 }: {
   exhibit: Exhibit;
   onClose: () => void;
-  onTranslate: (apiKey: string) => void;
+  onTranslate: (apiKey: string, target: Exhibit["outputLang"]) => void;
 }) {
   const [apiKey, setApiKey] = useState(loadApiKey);
-  const output = langOf(exhibit.outputLang);
+  // Default target: the exhibit's output language, unless it equals the source.
+  const fallback = LANGUAGES.find((l) => l.code !== exhibit.inputLang)!.code;
+  const [target, setTarget] = useState(
+    exhibit.outputLang !== exhibit.inputLang ? exhibit.outputLang : fallback,
+  );
 
   function translate() {
     saveApiKey(apiKey);
-    onTranslate(apiKey.trim());
+    onTranslate(apiKey.trim(), target);
   }
 
   return (
-    <Modal title={`Translate into ${output.native}`} onClose={onClose}>
+    <Modal title="Translate the book" onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
         <div className="inspector-note">
           Claude translates the book's text — titles, gallery descriptions, plate labels and
-          captions — into <b>{output.native}</b>. Afterwards the editor switches to the
+          captions — into the language you pick. Afterwards the editor switches to the
           translated view, where you can review and edit every translation before exporting;
           the language toggle in the top bar flips between the two versions.
         </div>
+        <Field label="Translate into">
+          <LangChips value={target} onChange={setTarget} exclude={exhibit.inputLang} />
+        </Field>
         <Field label="Anthropic API key">
           <input
             className="input"

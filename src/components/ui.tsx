@@ -128,13 +128,16 @@ export function LangBadge({ input, output }: { input: Language; output: Language
 export function LangChips({
   value,
   onChange,
+  exclude,
 }: {
   value: Language;
   onChange: (lang: Language) => void;
+  /** Hide one language (e.g. the source language in a target picker). */
+  exclude?: Language;
 }) {
   return (
     <div className="chip-row">
-      {LANGUAGES.map((l) => (
+      {LANGUAGES.filter((l) => l.code !== exclude).map((l) => (
         <button
           key={l.code}
           type="button"
