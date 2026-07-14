@@ -93,9 +93,9 @@ const MID_W = 150; // arrow + note column between before and after
 const PANEL_PAD = 14; // breathing room between an image and its backdrop panel
 
 /** A fixed-size shaded backdrop panel with the image aspect-fit and centered
- *  on it — every pair row gets identical panels, so the page reads the same
- *  whether the sources are vertical or horizontal. */
-function PairPanel({
+ *  on it — used for the edits pairs and the reference result, so those areas
+ *  read the same whether the source is vertical or horizontal. */
+function ShadedPanel({
   im,
   w,
   h,
@@ -105,7 +105,7 @@ function PairPanel({
   im: ExhibitImage | undefined;
   w: number;
   h: number;
-  badge: string;
+  badge?: string;
   translated: boolean;
 }) {
   let img: ReactNode = null;
@@ -124,7 +124,7 @@ function PairPanel({
   return (
     <div className={cls("pc-pair-panel", !im && "empty")} style={{ width: w, height: h }}>
       {img}
-      <span className="pc-plate">{badge}</span>
+      {badge && <span className="pc-plate">{badge}</span>}
     </div>
   );
 }
@@ -152,12 +152,12 @@ function EditPairs({
         const note = after ? pick(after.description, after.descriptionTr, translated) : "";
         return (
           <div key={before.id} className="pc-pair-row" style={{ height: slotH }}>
-            <PairPanel im={before} w={colW} h={slotH} badge={ui.before} translated={translated} />
+            <ShadedPanel im={before} w={colW} h={slotH} badge={ui.before} translated={translated} />
             <div className="pc-pair-mid" style={{ width: MID_W }}>
               <span className="pc-pair-arrow">→</span>
               {note.trim() && <span className="pc-pair-note">{note}</span>}
             </div>
-            <PairPanel im={after} w={colW} h={slotH} badge={ui.after} translated={translated} />
+            <ShadedPanel im={after} w={colW} h={slotH} badge={ui.after} translated={translated} />
           </div>
         );
       })}
@@ -186,9 +186,7 @@ function ReferenceSplit({
   const HEAD = 30; // section header line
   const sectionH = box.h - HEAD;
   const leftW = refs.length > 0 ? Math.round((box.w - MID) * 0.44) : 0;
-  const rightW = box.w - MID - leftW;
-  const aOut = aspectOf(out);
-  const outH = Math.min(sectionH, rightW / aOut);
+  const rightW = refs.length > 0 ? box.w - MID - leftW : box.w;
   const refLayout = justifiedLayout(refs.map(aspectOf), leftW, sectionH, 10);
 
   return (
@@ -218,16 +216,17 @@ function ReferenceSplit({
           </div>
         </>
       )}
-      <div className="pc-refcol" style={{ width: refs.length > 0 ? rightW : box.w }}>
+      <div className="pc-refcol" style={{ width: rightW }}>
         <div className="pc-sec-head">{ui.result}</div>
-        <div className="pc-refout">
-          <Cell
-            im={out}
-            w={aOut * outH}
-            h={outH}
-            badge={showPlates ? plateLabel(out, images.length - 1, translated) : undefined}
-          />
-        </div>
+        {/* Same shaded backdrop as the edits template: the result sits
+            centered on a panel filling the section, whatever its aspect. */}
+        <ShadedPanel
+          im={out}
+          w={rightW}
+          h={sectionH - 10 /* column gap */}
+          badge={showPlates ? plateLabel(out, images.length - 1, translated) : undefined}
+          translated={translated}
+        />
       </div>
     </div>
   );
