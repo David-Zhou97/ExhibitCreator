@@ -407,7 +407,7 @@ button { font-family: inherit; }
   gap: 10px; color: var(--pix-400); font-size: 15px;
 }
 
-/* Incognito: strip brand accents from book pages and stamp every page.
+/* Incognito: dark, de-branded book pages, stamped on every page.
    The watermark strikes diagonally across the full page, above all content. */
 .pc-watermark {
   position: absolute; inset: 0; z-index: 10; pointer-events: none;
@@ -417,14 +417,26 @@ button { font-family: inherit; }
   transform: rotate(-27deg);
   font-family: var(--font-body); font-weight: 800; font-size: 57px;
   letter-spacing: 0.22em; text-transform: uppercase; white-space: nowrap;
-  color: rgba(190, 58, 76, 0.16);
+  color: rgba(255, 255, 255, 0.13);
 }
-.pc-cover .pc-watermark span { color: rgba(255, 255, 255, 0.17); }
-.pc.incognito .pc-rule { background: #64748b; }
-.pc.incognito .pc-pair-panel { background: linear-gradient(150deg, #f2f4f7, #e8ebf0); }
-.pc.incognito .pc-pair-arrow { color: #94a3b8; }
-.pc.incognito .pc-caption b { color: #475569; }
-.pc.incognito .pc-plate { color: #374151; }
+.pc.incognito { background: #1d222e; color: #e8eaf0; }
+.pc.incognito .pc-overline { color: #8b93a5; }
+.pc.incognito .pc-pageno { color: #7c8496; }
+.pc.incognito .pc-rule { background: #5b6577; }
+.pc.incognito .pc-desc { color: #b4bccb; }
+.pc.incognito .pc-cell { background: #2a3040; }
+.pc.incognito .pc-plate { background: rgba(14, 18, 26, 0.72); color: #dfe3ec; }
+.pc.incognito .pc-captions { border-top-color: rgba(255, 255, 255, 0.14); }
+.pc.incognito .pc-caption { color: #a9b1c1; }
+.pc.incognito .pc-caption b { color: #d2d8e2; }
+.pc.incognito .pc-pair-panel {
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.035));
+}
+.pc.incognito .pc-pair-panel.empty { background: none; border-color: rgba(255, 255, 255, 0.18); }
+.pc.incognito .pc-pair-arrow { color: #6c7689; }
+.pc.incognito .pc-pair-note { color: #c3cad8; }
+.pc.incognito .pc-sec-head { color: #8b93a5; }
+.pc.incognito .pc-empty { border-color: rgba(255, 255, 255, 0.18); color: #8b93a5; }
 .pc-cover-ink { background: var(--ink-gradient); }
 
 /* Cover page */
