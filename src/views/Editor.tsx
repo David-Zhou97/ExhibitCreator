@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  ArrowLeft, Check, ChevronDown, ChevronUp, FileDown, ImagePlus,
+  ArrowLeft, Check, ChevronDown, ChevronUp, EyeOff, FileDown, ImagePlus,
   Languages, Loader2, Plus, Trash2, X,
 } from "lucide-react";
 import {
@@ -13,7 +13,7 @@ import { exportBookPdf, pdfFilename } from "../lib/pdf";
 import { hasTranslations, loadApiKey, saveApiKey, translateExhibit } from "../lib/translate";
 import { LANGUAGES, langOf } from "../lib/lang";
 import { CoverCanvas, PAGE_H, PAGE_W, PageCanvas, Scaled } from "../components/PageCanvas";
-import { Button, cls, CoverPicker, Field, IconBtn, LangBadge, LangChips, Modal, Wordmark } from "../components/ui";
+import { Button, cls, CoverPicker, Field, IconBtn, isBrandCover, LangBadge, LangChips, Modal, Wordmark } from "../components/ui";
 
 type Selection = "cover" | string; // page id
 
@@ -161,7 +161,14 @@ export function Editor({
     <div className="editor-root">
       <header className="top-nav">
         <IconBtn icon={ArrowLeft} label="Back to exhibits" size={18} onClick={onBack} />
-        <Wordmark />
+        {exhibit.incognito ? (
+          <div className="wordmark-row" title="Incognito exhibit — no PixAI branding">
+            <EyeOff size={22} strokeWidth={1.75} />
+            <span className="wordmark-text">Incognito</span>
+          </div>
+        ) : (
+          <Wordmark />
+        )}
         <span className="app-name-tag">Exhibit Creator</span>
         <input
           className="bare-input"
@@ -530,8 +537,42 @@ function CoverInspector({
       <Field label="Output language">
         <LangChips value={exhibit.outputLang} onChange={(l) => patch({ outputLang: l })} />
       </Field>
+      <Field label="Mode">
+        <div className="chip-row">
+          <button
+            type="button"
+            className={cls("chip", !exhibit.incognito && "active")}
+            onClick={() => patch({ incognito: false })}
+          >
+            PixAI branded
+          </button>
+          <button
+            type="button"
+            className={cls("chip", exhibit.incognito && "active")}
+            onClick={() =>
+              patch({
+                incognito: true,
+                // Brand key-art covers don't exist in incognito mode.
+                ...(isBrandCover(exhibit.cover) ? { cover: { kind: "gradient" } as const } : {}),
+              })
+            }
+          >
+            Incognito
+          </button>
+        </div>
+      </Field>
+      {exhibit.incognito && (
+        <div className="inspector-note">
+          No PixAI branding anywhere, and every page carries a “Strictly Confidential”
+          watermark — in the preview and the exported PDF.
+        </div>
+      )}
       <Field label="Cover image">
-        <CoverPicker value={exhibit.cover} onChange={(cover) => patch({ cover })} />
+        <CoverPicker
+          value={exhibit.cover}
+          onChange={(cover) => patch({ cover })}
+          incognito={exhibit.incognito}
+        />
       </Field>
       <div className="inspector-note">
         The language pair and cover appear on the first page of the exported PDF.

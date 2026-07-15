@@ -153,19 +153,25 @@ export function LangChips({
 
 /* ---- Cover picker ------------------------------------------------------------ */
 
-const COVER_PRESETS = [
+export const COVER_PRESETS = [
   "/brand/mio-portrait.png",
   "/brand/bg-pastel-sky.png",
   "/brand/key-art-fireplace.png",
   "/brand/key-art-lanterns.png",
 ];
 
+export const isBrandCover = (cover: Cover) =>
+  cover.kind === "image" && COVER_PRESETS.includes(cover.src);
+
 export function CoverPicker({
   value,
   onChange,
+  incognito = false,
 }: {
   value: Cover;
   onChange: (cover: Cover) => void;
+  /** Hide the PixAI key-art presets and show a neutral gradient option. */
+  incognito?: boolean;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const isPreset = value.kind === "image" && COVER_PRESETS.includes(value.src);
@@ -184,18 +190,20 @@ export function CoverPicker({
     <div className="cover-opts">
       <button
         type="button"
-        className={cls("cover-opt", "gradient", value.kind === "gradient" && "sel")}
-        title="PixAI brand gradient"
+        className={cls("cover-opt", "gradient", incognito && "ink", value.kind === "gradient" && "sel")}
+        title={incognito ? "Neutral gradient" : "PixAI brand gradient"}
         onClick={() => onChange({ kind: "gradient" })}
       >
-        <img
-          src="/brand/mio-mascot.png"
-          alt=""
-          style={{ objectFit: "contain", objectPosition: "bottom", padding: "8px 0 0" }}
-        />
+        {!incognito && (
+          <img
+            src="/brand/mio-mascot.png"
+            alt=""
+            style={{ objectFit: "contain", objectPosition: "bottom", padding: "8px 0 0" }}
+          />
+        )}
         {value.kind === "gradient" && <Sel />}
       </button>
-      {COVER_PRESETS.map((src) => (
+      {(incognito ? [] : COVER_PRESETS).map((src) => (
         <button
           key={src}
           type="button"

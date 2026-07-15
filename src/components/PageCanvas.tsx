@@ -273,7 +273,7 @@ export function PageCanvas({
   });
 
   return (
-    <div className="pc">
+    <div className={cls("pc", exhibit.incognito && "incognito")}>
       <div className="pc-head">
         <span className="pc-overline">
           {pick(exhibit.title, exhibit.titleTr, translated).trim() || "Untitled exhibit"}
@@ -328,6 +328,16 @@ export function PageCanvas({
           )}
         </div>
       )}
+      {exhibit.incognito && <Watermark />}
+    </div>
+  );
+}
+
+/** Diagonal "Strictly Confidential" stamp across the whole page. */
+function Watermark() {
+  return (
+    <div className="pc-watermark" aria-hidden>
+      <span>Strictly Confidential</span>
     </div>
   );
 }
@@ -342,21 +352,24 @@ export function CoverCanvas({
   translated?: boolean;
 }) {
   const { cover } = exhibit;
-  const gradient = cover.kind === "gradient";
+  const inc = exhibit.incognito;
+  const withMio = cover.kind === "gradient" && !inc;
   return (
-    <div className="pc pc-cover">
+    <div className={cls("pc", "pc-cover", inc && "incognito")}>
       {cover.kind === "gradient" ? (
-        <div className="pc-cover-media pc-cover-gradient">
+        <div className={cls("pc-cover-media", inc ? "pc-cover-ink" : "pc-cover-gradient")}>
           <div className="pc-cover-light" />
           {/* background-image divs (not <img>): the PDF renderer inlines CSS
               backgrounds reliably, while nested <img> decoding can race the
               SVG rasterization and drop the picture from the export. */}
-          <div className="pc-cover-mio">
-            <div
-              className="pc-cover-mio-art"
-              style={{ backgroundImage: 'url("/brand/mio-mascot.png")' }}
-            />
-          </div>
+          {withMio && (
+            <div className="pc-cover-mio">
+              <div
+                className="pc-cover-mio-art"
+                style={{ backgroundImage: 'url("/brand/mio-mascot.png")' }}
+              />
+            </div>
+          )}
           <div className="pc-cover-scrim" />
         </div>
       ) : (
@@ -365,7 +378,7 @@ export function CoverCanvas({
           <div className="pc-cover-scrim" />
         </div>
       )}
-      <div className={gradient ? "pc-cover-content with-mio" : "pc-cover-content"}>
+      <div className={withMio ? "pc-cover-content with-mio" : "pc-cover-content"}>
         <div className="pc-cover-title">
           {pick(exhibit.title, exhibit.titleTr, translated).trim() || "Untitled exhibit"}
         </div>
@@ -374,14 +387,17 @@ export function CoverCanvas({
             {pick(exhibit.subtitle, exhibit.subtitleTr, translated)}
           </div>
         )}
-        <div className="pc-cover-foot">
-          <div
-            className="pc-cover-foot-logo"
-            style={{ backgroundImage: 'url("/brand/pixai-logo-mark.svg")' }}
-          />
-          <span>PixAI · Model Capabilities Exhibit</span>
-        </div>
+        {!inc && (
+          <div className="pc-cover-foot">
+            <div
+              className="pc-cover-foot-logo"
+              style={{ backgroundImage: 'url("/brand/pixai-logo-mark.svg")' }}
+            />
+            <span>PixAI · Model Capabilities Exhibit</span>
+          </div>
+        )}
       </div>
+      {inc && <Watermark />}
     </div>
   );
 }

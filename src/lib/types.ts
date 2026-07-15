@@ -48,6 +48,9 @@ export interface Exhibit {
   inputLang: Language;
   outputLang: Language;
   cover: Cover;
+  /** Incognito: no PixAI branding anywhere, and every book page carries a
+   *  diagonal "Strictly Confidential" watermark (preview and PDF). */
+  incognito: boolean;
   pages: ExhibitPage[];
   createdAt: number;
   updatedAt: number;
@@ -67,7 +70,7 @@ export const newPage = (n: number): ExhibitPage => ({
 });
 
 export function newExhibit(
-  init: Pick<Exhibit, "title" | "subtitle" | "inputLang" | "outputLang" | "cover">,
+  init: Pick<Exhibit, "title" | "subtitle" | "inputLang" | "outputLang" | "cover" | "incognito">,
 ): Exhibit {
   const now = Date.now();
   return { id: uid(), ...init, pages: [newPage(1)], createdAt: now, updatedAt: now };

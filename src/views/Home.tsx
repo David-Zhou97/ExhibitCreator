@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { BookOpen, Plus, Trash2 } from "lucide-react";
+import { BookOpen, EyeOff, Plus, Trash2 } from "lucide-react";
 import { newExhibit, formatDate, type Cover, type Exhibit, type Language } from "../lib/types";
-import { Button, CoverPicker, Field, IconBtn, LangBadge, LangChips, Modal, Wordmark } from "../components/ui";
+import { Button, cls, CoverPicker, Field, IconBtn, isBrandCover, LangBadge, LangChips, Modal, Wordmark } from "../components/ui";
 
 export function Home({
   exhibits,
@@ -99,6 +99,10 @@ function ExhibitCard({
       <div className="ex-cover">
         {exhibit.cover.kind === "image" ? (
           <img className="full" src={exhibit.cover.src} alt="" />
+        ) : exhibit.incognito ? (
+          <div className="ex-cover-gradient ink">
+            <EyeOff size={28} strokeWidth={1.5} />
+          </div>
         ) : (
           <>
             <div className="ex-cover-gradient" />
@@ -144,6 +148,13 @@ function NewExhibitModal({
   const [inputLang, setInputLang] = useState<Language>("en");
   const [outputLang, setOutputLang] = useState<Language>("ja");
   const [cover, setCover] = useState<Cover>({ kind: "gradient" });
+  const [incognito, setIncognito] = useState(false);
+
+  function setMode(inc: boolean) {
+    setIncognito(inc);
+    // Brand key-art covers don't exist in incognito mode.
+    if (inc && isBrandCover(cover)) setCover({ kind: "gradient" });
+  }
 
   return (
     <Modal title="New exhibit" onClose={onClose}>
@@ -165,6 +176,22 @@ function NewExhibitModal({
             onChange={(e) => setSubtitle(e.target.value)}
           />
         </Field>
+        <Field label="Mode">
+          <div className="chip-row">
+            <button type="button" className={cls("chip", !incognito && "active")} onClick={() => setMode(false)}>
+              PixAI branded
+            </button>
+            <button type="button" className={cls("chip", incognito && "active")} onClick={() => setMode(true)}>
+              Incognito
+            </button>
+          </div>
+        </Field>
+        {incognito && (
+          <div className="inspector-note">
+            Incognito removes all PixAI branding and stamps a “Strictly Confidential”
+            watermark across every page of the book, including the exported PDF.
+          </div>
+        )}
         <Field label="Input language">
           <LangChips value={inputLang} onChange={setInputLang} />
         </Field>
@@ -172,7 +199,7 @@ function NewExhibitModal({
           <LangChips value={outputLang} onChange={setOutputLang} />
         </Field>
         <Field label="Cover image">
-          <CoverPicker value={cover} onChange={setCover} />
+          <CoverPicker value={cover} onChange={setCover} incognito={incognito} />
         </Field>
       </div>
       <div className="modal-foot">
@@ -183,7 +210,18 @@ function NewExhibitModal({
           variant="generate"
           icon={Plus}
           disabled={!title.trim()}
-          onClick={() => onCreate(newExhibit({ title: title.trim(), subtitle: subtitle.trim(), inputLang, outputLang, cover }))}
+          onClick={() =>
+            onCreate(
+              newExhibit({
+                title: title.trim(),
+                subtitle: subtitle.trim(),
+                inputLang,
+                outputLang,
+                cover,
+                incognito,
+              }),
+            )
+          }
         >
           Create exhibit
         </Button>

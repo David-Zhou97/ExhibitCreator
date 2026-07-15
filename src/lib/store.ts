@@ -45,6 +45,7 @@ function withStore<T>(
 async function migrate(e: Exhibit): Promise<Exhibit> {
   return {
     ...e,
+    incognito: e.incognito ?? false,
     pages: await Promise.all(
       e.pages.map(async (p) => ({
         ...p,
